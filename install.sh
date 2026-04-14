@@ -97,8 +97,9 @@ setup_squid() {
     # 创建 Squid 日志目录
     mkdir -p /var/log/squid
     chown -R proxy:proxy /var/log/squid 2>/dev/null || chown -R root:root /var/log/squid
+    chmod 755 /var/log/squid
 
-    # 创建 Squid 配置目录
+    # 创建 Squid 配置目录（如果不存在）
     mkdir -p /etc/squid
 
     # 创建必要的配置文件（如果不存在）
