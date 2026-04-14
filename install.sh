@@ -275,32 +275,30 @@ init_database() {
 create_systemd_service() {
     print_info "正在创建 Systemd 服务..."
 
-    # 使用 printf 和临时变量来正确展开所有变量
     SERVICE_FILE="/etc/systemd/system/squid-acl-dashboard.service"
     
-    cat > "$SERVICE_FILE" << SERVICEFILE
-[Unit]
-Description=Squid ACL Dashboard
-After=network.target
-
-[Service]
-Type=simple
-User=$APP_USER
-WorkingDirectory=$APP_DIR
-Environment="PATH=$APP_DIR/venv/bin"
-Environment="SECRET_KEY=$DEFAULT_SECRET_KEY"
-Environment="SMTP_HOST=$SMTP_HOST"
-Environment="SMTP_PORT=$SMTP_PORT"
-Environment="SMTP_USER=$SMTP_USER"
-Environment="SMTP_PASS=$SMTP_PASS"
-Environment="ADMIN_EMAIL=$ADMIN_EMAIL"
-ExecStart=$APP_DIR/venv/bin/gunicorn -w 4 -b 127.0.0.1:$APP_PORT app:app
-Restart=always
-RestartSec=5
-
-[Install]
-WantedBy=multi-user.target
-SERVICEFILE
+    # 使用 printf 确保变量正确展开
+    printf '%s\n' "[Unit]" > "$SERVICE_FILE"
+    printf '%s\n' "Description=Squid ACL Dashboard" >> "$SERVICE_FILE"
+    printf '%s\n' "After=network.target" >> "$SERVICE_FILE"
+    printf '%s\n' "" >> "$SERVICE_FILE"
+    printf '%s\n' "[Service]" >> "$SERVICE_FILE"
+    printf '%s\n' "Type=simple" >> "$SERVICE_FILE"
+    printf '%s\n' "User=$APP_USER" >> "$SERVICE_FILE"
+    printf '%s\n' "WorkingDirectory=$APP_DIR" >> "$SERVICE_FILE"
+    printf '%s\n' "Environment=\"PATH=$APP_DIR/venv/bin\"" >> "$SERVICE_FILE"
+    printf '%s\n' "Environment=\"SECRET_KEY=$DEFAULT_SECRET_KEY\"" >> "$SERVICE_FILE"
+    printf '%s\n' "Environment=\"SMTP_HOST=$SMTP_HOST\"" >> "$SERVICE_FILE"
+    printf '%s\n' "Environment=\"SMTP_PORT=$SMTP_PORT\"" >> "$SERVICE_FILE"
+    printf '%s\n' "Environment=\"SMTP_USER=$SMTP_USER\"" >> "$SERVICE_FILE"
+    printf '%s\n' "Environment=\"SMTP_PASS=$SMTP_PASS\"" >> "$SERVICE_FILE"
+    printf '%s\n' "Environment=\"ADMIN_EMAIL=$ADMIN_EMAIL\"" >> "$SERVICE_FILE"
+    printf '%s\n' "ExecStart=$APP_DIR/venv/bin/gunicorn -w 4 -b 127.0.0.1:$APP_PORT app:app" >> "$SERVICE_FILE"
+    printf '%s\n' "Restart=always" >> "$SERVICE_FILE"
+    printf '%s\n' "RestartSec=5" >> "$SERVICE_FILE"
+    printf '%s\n' "" >> "$SERVICE_FILE"
+    printf '%s\n' "[Install]" >> "$SERVICE_FILE"
+    printf '%s\n' "WantedBy=multi-user.target" >> "$SERVICE_FILE"
 
     # 重载 systemd
     systemctl daemon-reload
