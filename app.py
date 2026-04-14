@@ -172,17 +172,6 @@ def init_db():
 
     conn.commit()
 
-    # ── 从服务器文件初始化 proxy_ips（如表为空）─────────────
-    if conn.execute("SELECT COUNT(*) FROM proxy_ips").fetchone()[0] == 0:
-        for g in ["A", "B", "C", "D"]:
-            sync_ips_from_file(g)
-        app.logger.info("proxy_ips 表已从服务器文件初始化")
-
-    # ── 从服务器文件初始化 proxy_users（如表为空）───────────
-    if conn.execute("SELECT COUNT(*) FROM proxy_users").fetchone()[0] == 0:
-        cnt = sync_users_from_passwd()
-        app.logger.info("proxy_users 表已从 passwd 初始化（共 %d 条）", cnt)
-
     # ── 用户表 ────────────────────────────────────────────────────────────────
     cur.execute(
         """
