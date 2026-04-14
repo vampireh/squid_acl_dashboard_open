@@ -374,7 +374,7 @@ KEEP_DAYS = 180          # 保留最近 180 天的数据
 CLEANUP_HOUR = 3         # 每天北京时间 03:00 执行一次清理
 
 # ── 邮件找回密码配置 ──────────────────────────────────────────────────────────
-SMTP_HOST = os.environ.get("SMTP_HOST", "smtp.qq.com")
+SMTP_HOST = os.environ.get("SMTP_HOST", "smtp.example.com")
 SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
 SMTP_USER = os.environ.get("SMTP_USER", "")
 SMTP_PASS = os.environ.get("SMTP_PASS", "")
