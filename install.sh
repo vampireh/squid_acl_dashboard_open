@@ -224,6 +224,12 @@ install_python_deps() {
         pip install --quiet Flask Werkzeug Flask-Login gunicorn
     fi
 
+    # 验证 gunicorn 安装
+    if [[ ! -f "$APP_DIR/venv/bin/gunicorn" ]]; then
+        print_error "gunicorn 安装失败"
+        exit 1
+    fi
+
     print_success "Python 依赖安装完成"
 }
 
@@ -277,24 +283,24 @@ create_systemd_service() {
 
     SERVICE_FILE="/etc/systemd/system/squid-acl-dashboard.service"
     
-    # 使用 eval 和 echo 确保变量正确展开
-    eval "cat > $SERVICE_FILE" << EOF
+    # 写入服务文件（使用直接变量展开）
+    cat > "$SERVICE_FILE" << EOF
 [Unit]
 Description=Squid ACL Dashboard
 After=network.target
 
 [Service]
 Type=simple
-User=$APP_USER
-WorkingDirectory=$APP_DIR
-Environment="PATH=$APP_DIR/venv/bin"
-Environment="SECRET_KEY=$DEFAULT_SECRET_KEY"
-Environment="SMTP_HOST=$SMTP_HOST"
-Environment="SMTP_PORT=$SMTP_PORT"
-Environment="SMTP_USER=$SMTP_USER"
-Environment="SMTP_PASS=$SMTP_PASS"
-Environment="ADMIN_EMAIL=$ADMIN_EMAIL"
-ExecStart=$APP_DIR/venv/bin/gunicorn -w 4 -b 127.0.0.1:$APP_PORT app:app
+User=root
+WorkingDirectory=/opt/squid_acl_dashboard
+Environment="PATH=/opt/squid_acl_dashboard/venv/bin"
+Environment="SECRET_KEY=${DEFAULT_SECRET_KEY}"
+Environment="SMTP_HOST=${SMTP_HOST}"
+Environment="SMTP_PORT=${SMTP_PORT}"
+Environment="SMTP_USER=${SMTP_USER}"
+Environment="SMTP_PASS=${SMTP_PASS}"
+Environment="ADMIN_EMAIL=${ADMIN_EMAIL}"
+ExecStart=/opt/squid_acl_dashboard/venv/bin/gunicorn -w 4 -b 127.0.0.1:5001 app:app
 Restart=always
 RestartSec=5
 
