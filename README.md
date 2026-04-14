@@ -19,7 +19,36 @@
 
 ---
 
-## 部署指南
+## 快速安装（推荐）
+
+### Ubuntu 一键安装脚本
+
+支持 Ubuntu 20.04/22.04/24.04，自动完成所有配置。
+
+```bash
+# 下载安装脚本
+wget https://raw.githubusercontent.com/vampireh/squid_acl_dashboard_open/master/install.sh
+
+# 添加执行权限
+chmod +x install.sh
+
+# 运行安装（必须使用 root）
+sudo ./install.sh
+```
+
+安装过程中会提示输入：
+- 安装目录（默认：`/opt/squid_acl_dashboard`）
+- 监听端口（默认：`5001`）
+- 管理员邮箱（用于接收密码重置邮件）
+- SMTP 服务器配置（用于忘记密码功能）
+
+安装完成后，访问 `http://服务器IP:5001/squid-acl`，使用默认账号 `admin` / `admin@123` 登录。
+
+---
+
+## 手动部署指南
+
+如需手动部署或自定义配置，请参考以下步骤。
 
 ### 一、环境要求
 
