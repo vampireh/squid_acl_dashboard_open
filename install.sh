@@ -275,7 +275,10 @@ init_database() {
 create_systemd_service() {
     print_info "正在创建 Systemd 服务..."
 
-    cat > /etc/systemd/system/squid-acl-dashboard.service << EOF
+    # 使用 printf 和临时变量来正确展开所有变量
+    SERVICE_FILE="/etc/systemd/system/squid-acl-dashboard.service"
+    
+    cat > "$SERVICE_FILE" << SERVICEFILE
 [Unit]
 Description=Squid ACL Dashboard
 After=network.target
@@ -297,7 +300,7 @@ RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
-EOF
+SERVICEFILE
 
     # 重载 systemd
     systemctl daemon-reload
@@ -330,8 +333,14 @@ configure_firewall() {
 start_services() {
     print_info "正在启动服务..."
 
-    # 启动 Squid
-    systemctl restart squid || systemctl restart squid3 || true
+    # 启动 Squid（Ubuntu 24.04 使用 squid 服务名）
+    if systemctl list-unit-files | grep -q "^squid.service"; then
+        systemctl restart squid || print_warning "Squid 启动失败，请手动检查配置"
+    elif systemctl list-unit-files | grep -q "^squid3.service"; then
+        systemctl restart squid3 || print_warning "Squid3 启动失败，请手动检查配置"
+    else
+        print_warning "未找到 Squid 服务，跳过启动"
+    fi
 
     # 启动应用
     systemctl start squid-acl-dashboard
@@ -344,6 +353,9 @@ start_services() {
         print_success "服务启动成功"
     else
         print_error "服务启动失败，请检查日志"
+        echo "--- 服务状态 ---"
+        systemctl status squid-acl-dashboard --no-pager
+        echo "--- 最近日志 ---"
         journalctl -u squid-acl-dashboard --no-pager -n 20
         exit 1
     fi
