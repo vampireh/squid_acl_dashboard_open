@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>IP 分组管理</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, "Microsoft YaHei", "PingFang SC", sans-serif; background: #0f172a; min-height: 100vh; color: #f1f5f9; }
+    a { color: #38bdf8; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .topbar { background: #1e293b; border-bottom: 1px solid rgba(255,255,255,0.06); padding: 0 24px; height: 56px; display: flex; align-items: center; gap: 24px; }
+    .topbar-brand { font-size: 16px; font-weight: 600; color: #f1f5f9; }
+    .topbar-brand span { color: #38bdf8; }
+    .topbar-nav { display: flex; gap: 4px; flex: 1; }
+    .topbar-nav a { padding: 6px 14px; border-radius: 8px; font-size: 14px; color: #94a3b8; transition: all 0.15s; }
+    .topbar-nav a:hover { background: rgba(255,255,255,0.06); color: #f1f5f9; text-decoration: none; }
+    .topbar-nav a.active { background: rgba(56,189,248,0.12); color: #38bdf8; }
+    .topbar-right { display: flex; align-items: center; gap: 16px; font-size: 13px; color: #64748b; }
+
+    .container { max-width: 1200px; margin: 0 auto; padding: 32px 24px; }
+    h1 { font-size: 22px; font-weight: 600; margin-bottom: 4px; }
+
+    /* 分组切换 */
+    .group-tabs { display: flex; gap: 8px; margin: 24px 0; flex-wrap: wrap; }
+    .group-tab { padding: 8px 20px; border-radius: 10px; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.15s; border: 1px solid transparent; color: #94a3b8; background: #1e293b; }
+    .group-tab:hover { color: #f1f5f9; }
+    .group-tab.active-a { background: rgba(245,158,11,0.12); border-color: rgba(245,158,11,0.3); color: #f59e0b; }
+    .group-tab.active-b { background: rgba(59,130,246,0.12); border-color: rgba(59,130,246,0.3); color: #3b82f6; }
+    .group-tab.active-c { background: rgba(16,185,129,0.12); border-color: rgba(16,185,129,0.3); color: #10b981; }
+    .group-tab.active-d { background: rgba(139,92,246,0.12); border-color: rgba(139,92,246,0.3); color: #8b5cf6; }
+    .group-tab .cnt { font-size: 12px; opacity: 0.7; margin-left: 6px; }
+
+    /* 说明框 */
+    .info-box { padding: 16px 20px; border-radius: 12px; margin-bottom: 24px; font-size: 14px; line-height: 1.6; border: 1px solid; }
+    .info-box-a { background: rgba(245,158,11,0.08); border-color: rgba(245,158,11,0.2); color: #fcd34d; }
+    .info-box-b { background: rgba(59,130,246,0.08); border-color: rgba(59,130,246,0.2); color: #93c5fd; }
+    .info-box-c { background: rgba(16,185,129,0.08); border-color: rgba(16,185,129,0.2); color: #6ee7b7; }
+    .info-box-d { background: rgba(139,92,246,0.08); border-color: rgba(139,92,246,0.2); color: #c4b5fd; }
+
+    /* 表格 */
+    table { width: 100%; border-collapse: collapse; background: #1e293b; border-radius: 12px; overflow: hidden; border: 1px solid rgba(255,255,255,0.06); }
+    thead th { background: #0f172a; padding: 12px 16px; text-align: left; font-size: 13px; color: #64748b; font-weight: 500; }
+    tbody tr { transition: background 0.1s; }
+    tbody tr:hover { background: rgba(255,255,255,0.02); }
+    td { padding: 10px 16px; font-size: 14px; border-top: 1px solid rgba(255,255,255,0.04); }
+    td.mono { font-family: "Menlo", "Consolas", monospace; color: #38bdf8; }
+
+    /* 表单 */
+    .add-form { background: #1e293b; border-radius: 12px; padding: 20px; margin-top: 20px; border: 1px solid rgba(255,255,255,0.06); }
+    .add-form h3 { font-size: 15px; margin-bottom: 16px; color: #f1f5f9; }
+    .form-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group label { font-size: 12px; color: #64748b; }
+    .form-group input, .form-group select {
+      padding: 8px 12px; background: #0f172a; border: 1px solid #334155;
+      border-radius: 8px; color: #f1f5f9; font-size: 14px; outline: none;
+    }
+    .form-group input:focus, .form-group select:focus { border-color: #38bdf8; }
+    .btn { padding: 8px 18px; border: none; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.15s; }
+    .btn-add { background: #0284c7; color: #fff; }
+    .btn-add:hover { background: #0369a1; }
+    .btn-sm { padding: 5px 12px; font-size: 12px; border-radius: 6px; cursor: pointer; border: none; }
+    .btn-del { background: rgba(239,68,68,0.15); color: #fca5a5; }
+    .btn-del:hover { background: rgba(239,68,68,0.25); }
+    .btn-move { background: rgba(245,158,11,0.12); color: #fcd34d; }
+    .btn-move:hover { background: rgba(245,158,11,0.22); }
+    .btn-edit { background: rgba(59,130,246,0.12); color: #93c5fd; }
+    .btn-edit:hover { background: rgba(59,130,246,0.22); }
+
+    /* 分页信息 */
+    .table-info { padding: 12px 16px; font-size: 13px; color: #475569; border-top: 1px solid rgba(255,255,255,0.04); }
+
+    /* Flash */
+    .alert { padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; font-size: 14px; }
+    .alert-success { background: rgba(34,197,94,0.12); border: 1px solid rgba(34,197,94,0.3); color: #86efac; }
+    .alert-danger { background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.3); color: #fca5a5; }
+    .alert-warning { background: rgba(245,158,11,0.12); border: 1px solid rgba(245,158,11,0.3); color: #fcd34d; }
+
+    /* 编辑行 */
+    .edit-row { display: none; }
+
+    .back-link { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 16px; font-size: 14px; color: #64748b; }
+    .back-link:hover { color: #38bdf8; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="topbar-brand">Squid <span>ACL</span> 管理</div>
+    <div class="topbar-nav">
+      <a href="{{ url_prefix }}/">📊 看板</a>
+      <a href="{{ url_prefix }}/proxy">⚙️ 配置管理</a>
+      <a href="{{ url_prefix }}/proxy/ips" class="active">🌐 IP 分组</a>
+      <a href="{{ url_prefix }}/proxy/allow">🌐 白名单</a>
+      <a href="{{ url_prefix }}/proxy/users">🔑 用户</a>
+      <a href="{{ url_prefix }}/proxy/conf">📄 squid.conf</a>
+    </div>
+    <div class="topbar-right">
+      <span>{{ current_user.id }}</span>
+      <a href="{{ url_prefix }}/logout">登出</a>
+    </div>
+  </div>
+
+  <div class="container">
+    <a href="{{ url_prefix }}/proxy" class="back-link">← 返回配置管理</a>
+    <h1>🌐 IP 分组管理</h1>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}
+        <div class="alert alert-{{ cat }}">{{ msg }}</div>
+      {% endfor %}
+    {% endwith %}
+
+    <!-- 分组切换标签 -->
+    <div class="group-tabs">
+      {% for g, desc in group_desc.items() %}
+      <a href="{{ url_prefix }}/proxy/ips?group={{ g }}"
+         class="group-tab {% if g == group %}active-{{ g|lower }}{% endif %}">
+        {{ desc.icon }} {{ desc.label }}<span class="cnt">({{ group_counts[g] }})</span>
+      </a>
+      {% endfor %}
+    </div>
+
+    <!-- 当前分组说明 -->
+    <div class="info-box info-box-{{ group|lower }}">
+      <strong>{{ group_desc[group].icon }} {{ group_desc[group].label }}</strong>：
+      {{ group_desc[group].desc }}。
+      {% if group in ('B','D') %}需在「<a href="{{ url_prefix }}/proxy/users">用户管理</a>」中添加账号后配合使用。{% endif %}
+      {% if group in ('C','D') %}可访问范围由「<a href="{{ url_prefix }}/proxy/allow">白名单</a>」控制。{% endif %}
+    </div>
+
+    <!-- IP 列表 -->
+    <table>
+      <thead>
+        <tr>
+          <th style="width:60px">#</th>
+          <th>IP 地址</th>
+          <th>备注</th>
+          <th>添加到组</th>
+          <th style="width:220px">操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr id="row-{{ row.id }}">
+          <td style="color:#475569">{{ loop.index }}</td>
+          <td class="mono">{{ row.ip_addr }}</td>
+          <td style="color:#94a3b8">{{ row.description or '—' }}</td>
+          <td>
+            <form method="post" style="display:inline">
+              <input type="hidden" name="action" value="move">
+              <input type="hidden" name="id" value="{{ row.id }}">
+              <select name="new_group" onchange="if(this.value){this.form.submit();}" style="padding:4px 8px;background:#0f172a;border:1px solid #334155;border-radius:6px;color:#94a3b8;font-size:13px;outline:none;">
+                <option value="">移动到…</option>
+                {% for g in ['A','B','C','D'] if g != group %}
+                  <option value="{{ g }}">{{ group_desc[g].label }}</option>
+                {% endfor %}
+              </select>
+            </form>
+          </td>
+          <td>
+            <button class="btn-sm btn-edit" onclick="toggleEdit({{ row.id }})">✏️ 编辑</button>
+            <form method="post" style="display:inline">
+              <input type="hidden" name="action" value="delete">
+              <input type="hidden" name="id" value="{{ row.id }}">
+              <button class="btn-sm btn-del" onclick="return confirm('确认删除 {{ row.ip_addr }}？')">🗑️ 删除</button>
+            </form>
+          </td>
+        </tr>
+        <!-- 编辑行 -->
+        <tr id="edit-{{ row.id }}" style="background:#0f172a;display:none;">
+          <td colspan="5">
+            <form method="post" style="display:flex;gap:10px;align-items:center;">
+              <input type="hidden" name="action" value="update">
+              <input type="hidden" name="id" value="{{ row.id }}">
+              <input type="text" name="ip_addr" value="{{ row.ip_addr }}" style="padding:6px 10px;background:#1e293b;border:1px solid #38bdf8;border-radius:6px;color:#f1f5f9;font-size:14px;width:180px;" placeholder="IP 地址" required>
+              <input type="text" name="description" value="{{ row.description }}" style="padding:6px 10px;background:#1e293b;border:1px solid #334155;border-radius:6px;color:#f1f5f9;font-size:14px;flex:1;" placeholder="备注（选填）">
+              <button type="submit" class="btn-sm btn-add">💾 保存</button>
+              <button type="button" class="btn-sm btn-del" onclick="toggleEdit({{ row.id }})">取消</button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" style="text-align:center;color:#475569;padding:32px;">暂无数据</td></tr>
+        {% endfor %}
+      </tbody>
+      {% if rows %}
+      <tfoot><tr><td colspan="5" class="table-info">共 {{ rows|length }} 条记录</td></tr></tfoot>
+      {% endif %}
+    </table>
+
+    <!-- 添加新 IP -->
+    <div class="add-form">
+      <h3>➕ 添加 IP 到 {{ group_desc[group].label }}</h3>
+      <form method="post" class="form-row">
+        <input type="hidden" name="action" value="add">
+        <div class="form-group">
+          <label>IP 地址</label>
+          <input type="text" name="ip_addr" placeholder="例：10.100.10.50" required>
+        </div>
+        <div class="form-group">
+          <label>加入分组</label>
+          <select name="ip_group">
+            {% for g in ['A','B','C','D'] %}
+              <option value="{{ g }}" {% if g==group %}selected{% endif %}>{{ group_desc[g].label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>备注</label>
+          <input type="text" name="description" placeholder="选填，如：会议室打印机">
+        </div>
+        <button type="submit" class="btn btn-add">添加</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    function toggleEdit(id) {
+      var el = document.getElementById('edit-' + id);
+      if (el) el.style.display = el.style.display === 'none' ? 'table-row' : 'none';
+    }
+  </script>
+</body>
+</html>

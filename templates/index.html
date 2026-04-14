@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>Squid ACL 看板</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+      background: #f1f5f9;
+      color: #1e293b;
+    }
+    /* ── 导航栏 ─────────────────────────────────── */
+    .navbar {
+      background: #0f172a;
+      padding: 0 24px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .navbar-brand {
+      color: #f1f5f9;
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-decoration: none;
+    }
+    .navbar-brand span { color: #38bdf8; }
+    .navbar-right { display: flex; align-items: center; gap: 12px; }
+    .navbar-user { color: #94a3b8; font-size: 13px; }
+    .navbar-user strong { color: #f1f5f9; margin-right: 4px; }
+    .nav-link {
+      color: #94a3b8;
+      font-size: 13px;
+      text-decoration: none;
+      padding: 5px 12px;
+      border-radius: 6px;
+      transition: background 0.15s, color 0.15s;
+      cursor: pointer;
+    }
+    .nav-link:hover { background: #1e293b; color: #f1f5f9; }
+    .nav-link.danger:hover { background: rgba(239,68,68,0.15); color: #fca5a5; }
+
+    /* ── 页面主体 ─────────────────────────────────── */
+    .container { max-width: 1400px; margin: 0 auto; padding: 24px; }
+    .page-title { font-size: 22px; font-weight: 700; color: #0f172a; margin-bottom: 4px; }
+    .page-meta { color: #64748b; font-size: 13px; margin-bottom: 24px; }
+
+    /* ── 卡片 ─────────────────────────────────────── */
+    .card {
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 16px 20px;
+      background: #fff;
+      margin-bottom: 20px;
+    }
+    .card h2 {
+      font-size: 13px;
+      font-weight: 600;
+      color: #64748b;
+      margin-bottom: 14px;
+      letter-spacing: 0.3px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* ── 筛选 ─────────────────────────────────────── */
+    .filters { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    .filters select,
+    .filters input {
+      padding: 8px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      font-size: 13px;
+      color: #1e293b;
+      background: #fff;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .filters select:focus,
+    .filters input:focus { border-color: #38bdf8; }
+    .filters input { width: 170px; }
+    .btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-primary { background: #0284c7; color: #fff; }
+    .btn-primary:hover { background: #0369a1; }
+    .btn-ghost { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
+    .btn-ghost:hover { background: #e2e8f0; }
+
+    /* ── 统计卡片网格 ─────────────────────────────── */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .stat-card {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 16px 20px;
+    }
+    .stat-card h2 {
+      font-size: 11px;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 12px;
+      font-weight: 600;
+    }
+    .stat-num { font-size: 28px; font-weight: 700; color: #0f172a; }
+
+    /* ── 表格 ─────────────────────────────────────── */
+    table { border-collapse: collapse; width: 100%; font-size: 14px; background: #fff; }
+    th, td { border: 1px solid #e2e8f0; padding: 8px 12px; text-align: left; }
+    th { background: #f8fafc; color: #64748b; font-size: 12px; font-weight: 600; letter-spacing: 0.3px; }
+    .nowrap { white-space: nowrap; }
+    .muted { color: #64748b; font-size: 13px; }
+
+    /* ── 分类标签 ─────────────────────────────────── */
+    .tag-acl { color: #dc2626; font-weight: 700; }
+    .tag-success { color: #16a34a; font-weight: 700; }
+    .tag-error { color: #d97706; font-weight: 700; }
+    .tag-other { color: #64748b; font-weight: 700; }
+
+    /* ── 响应式 ───────────────────────────────────── */
+    @media (max-width: 900px) {
+      .grid { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 600px) {
+      .grid { grid-template-columns: 1fr; }
+      .filters { flex-direction: column; align-items: stretch; }
+      .filters input { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 导航栏 -->
+  <nav class="navbar">
+    <a href="{{ url_prefix }}/" class="navbar-brand">Squid <span>ACL</span> 看板</a>
+    <div class="navbar-right">
+      <span class="navbar-user">
+        <strong>{{ current_user.id }}</strong>
+      </span>
+      <a href="{{ url_prefix }}/proxy" class="nav-link">&#9881; 配置管理</a>
+      <a href="{{ url_prefix }}/settings" class="nav-link">&#128273; 修改密码</a>
+      <a href="{{ url_prefix }}/logout" class="nav-link danger">&#128682; 登出</a>
+    </div>
+  </nav>
+
+  <div class="container">
+
+    <div class="page-title">实时监控看板</div>
+    <p class="page-meta">总事件数：<strong>{{ total }}</strong></p>
+
+    <!-- 筛选 -->
+    <div class="card">
+      <h2>&#128269; 动态筛选</h2>
+      <div class="filters" id="filterPanel">
+        <select id="filterCategory">
+          <option value="">全部分类</option>
+          <option value="ACL">ACL</option>
+          <option value="SUCCESS">SUCCESS</option>
+          <option value="ERROR">ERROR</option>
+          <option value="OTHER">OTHER</option>
+        </select>
+        <select id="filterStatus">
+          <option value="">全部事件类型</option>
+          <option value="TCP_MISS/200">TCP_MISS/200</option>
+          <option value="TCP_HIT/200">TCP_HIT/200</option>
+          <option value="TCP_MEM_HIT/200">TCP_MEM_HIT/200</option>
+          <option value="TCP_REFRESH_UNMODIFIED/200">TCP_REFRESH_UNMODIFIED/200</option>
+          <option value="TCP_REFRESH_MODIFIED/200">TCP_REFRESH_MODIFIED/200</option>
+          <option value="TCP_TUNNEL/200">TCP_TUNNEL/200</option>
+          <option value="TCP_DENIED/403">TCP_DENIED/403</option>
+          <option value="TCP_DENIED/407">TCP_DENIED/407</option>
+          <option value="NONE_NONE/000">NONE_NONE/000</option>
+          <option value="TAG_NONE/200">TAG_NONE/200</option>
+          <option value="TAG_NONE/403">TAG_NONE/403</option>
+          <option value="ERR_CONNECT_FAIL">ERR_CONNECT_FAIL</option>
+          <option value="ERR_DNS_FAIL">ERR_DNS_FAIL</option>
+          <option value="TCP_SWAPFAIL_MISS/200">TCP_SWAPFAIL_MISS/200</option>
+          <option value="UDP_HIT">UDP_HIT</option>
+          <option value="UDP_MISS">UDP_MISS</option>
+        </select>
+        <input type="text" id="filterIP" placeholder="按 IP 过滤">
+        <input type="text" id="filterHost" placeholder="按域名过滤">
+        <input type="text" id="filterTarget" placeholder="按目标地址过滤">
+        <button type="button" id="btnApply" class="btn btn-primary">查询</button>
+        <button type="button" id="btnReset" class="btn btn-ghost">重置</button>
+      </div>
+    </div>
+
+    <!-- 统计概览卡片 -->
+    <div class="grid">
+      <div class="stat-card">
+        <h2>总事件数</h2>
+        <div class="stat-num">{{ total }}</div>
+      </div>
+      <div class="stat-card">
+        <h2>Top IP</h2>
+        <div style="line-height:2; font-size:14px;">
+          {% for row in top_ip[:3] %}
+            <a href="{{ url_prefix }}/detail/ip/{{ row['client_ip'] }}" style="color:#1e293b; text-decoration:none;">
+              {{ row['client_ip'] }}
+            </a>
+            <span style="color:#94a3b8; font-size:12px;">×{{ row['cnt'] }}</span><br>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="stat-card">
+        <h2>Top Host</h2>
+        <div style="line-height:2; font-size:14px;">
+          {% for row in top_host[:3] %}
+            <a href="{{ url_prefix }}/detail/host/{{ row['host'] }}" style="color:#1e293b; text-decoration:none;">
+              {{ row['host'] }}
+            </a>
+            <span style="color:#94a3b8; font-size:12px;">×{{ row['cnt'] }}</span><br>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="stat-card">
+        <h2>分类分布</h2>
+        <div style="line-height:2; font-size:14px;">
+          {% for row in category_stats[:3] %}
+            <span class="tag-{{ row['category'].lower() }}">{{ row['category'] }}</span>
+            ×{{ row['cnt'] }}<br>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <!-- 事件详情表格 -->
+    <div class="card">
+      <h2>&#128197; 最近事件（最近 1000 条）</h2>
+      <table id="eventsTable">
+        <tr>
+          <th>时间</th>
+          <th>客户端 IP</th>
+          <th>分类</th>
+          <th>状态</th>
+          <th>方法</th>
+          <th>域名</th>
+          <th>目标</th>
+        </tr>
+        {% for row in recent %}
+        <tr class="event-row"
+            data-category="{{ row['category'] }}"
+            data-status="{{ row['status'] }}"
+            data-ip="{{ row['client_ip'] }}"
+            data-host="{{ row['host'] or '' }}"
+            data-target="{{ row['target'] }}">
+          <td class="nowrap">{{ row['event_time'] }}</td>
+          <td>
+            <a href="{{ url_prefix }}/detail/ip/{{ row['client_ip'] }}">
+              {{ row['client_ip'] }}
+            </a>
+          </td>
+          <td>
+            {% if row['category'] == 'ACL' %}
+              <span class="tag-acl">{{ row['category'] }}</span>
+            {% elif row['category'] == 'SUCCESS' %}
+              <span class="tag-success">{{ row['category'] }}</span>
+            {% elif row['category'] == 'ERROR' %}
+              <span class="tag-error">{{ row['category'] }}</span>
+            {% else %}
+              <span class="tag-other">{{ row['category'] }}</span>
+            {% endif %}
+          </td>
+          <td>{{ row['status'] }}</td>
+          <td>{{ row['method'] }}</td>
+          <td>
+            {% if row['host'] %}
+              <a href="{{ url_prefix }}/detail/host/{{ row['host'] }}">{{ row['host'] }}</a>
+            {% endif %}
+          </td>
+          <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis;">{{ row['target'] }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+    </div>
+
+  </div><!-- /container -->
+
+  <script>
+    function applyFilters() {
+      var cat = document.getElementById('filterCategory').value.trim().toLowerCase();
+      var sta = document.getElementById('filterStatus').value.trim().toLowerCase();
+      var ip  = document.getElementById('filterIP').value.trim().toLowerCase();
+      var host= document.getElementById('filterHost').value.trim().toLowerCase();
+      var tgt = document.getElementById('filterTarget').value.trim().toLowerCase();
+
+      document.querySelectorAll('.event-row').forEach(function(row) {
+        var rc = (row.dataset.category || '').toLowerCase();
+        var rs = (row.dataset.status || '').toLowerCase();
+        var ri = (row.dataset.ip || '').toLowerCase();
+        var rh = (row.dataset.host || '').toLowerCase();
+        var rt = (row.dataset.target || '').toLowerCase();
+
+        var ok = true;
+        if (cat && rc !== cat) ok = false;
+        if (sta && rs !== sta) ok = false;
+        if (ip  && ri.indexOf(ip) === -1) ok = false;
+        if (host&& rh.indexOf(host) === -1) ok = false;
+        if (tgt && rt.indexOf(tgt) === -1) ok = false;
+
+        row.style.display = ok ? '' : 'none';
+      });
+    }
+
+    function resetFilters() {
+      document.getElementById('filterCategory').value = '';
+      document.getElementById('filterStatus').value = '';
+      document.getElementById('filterIP').value = '';
+      document.getElementById('filterHost').value = '';
+      document.getElementById('filterTarget').value = '';
+      applyFilters();
+    }
+
+    document.getElementById('btnApply').addEventListener('click', applyFilters);
+    document.getElementById('btnReset').addEventListener('click', resetFilters);
+
+    document.getElementById('filterPanel').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') { e.preventDefault(); applyFilters(); }
+    });
+  </script>
+
+</body>
+</html>

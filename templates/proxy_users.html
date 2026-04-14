@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>用户账号管理</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, "Microsoft YaHei", "PingFang SC", sans-serif; background: #0f172a; min-height: 100vh; color: #f1f5f9; }
+    a { color: #38bdf8; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .topbar { background: #1e293b; border-bottom: 1px solid rgba(255,255,255,0.06); padding: 0 24px; height: 56px; display: flex; align-items: center; gap: 24px; }
+    .topbar-brand { font-size: 16px; font-weight: 600; color: #f1f5f9; }
+    .topbar-brand span { color: #38bdf8; }
+    .topbar-nav { display: flex; gap: 4px; flex: 1; }
+    .topbar-nav a { padding: 6px 14px; border-radius: 8px; font-size: 14px; color: #94a3b8; transition: all 0.15s; }
+    .topbar-nav a:hover { background: rgba(255,255,255,0.06); color: #f1f5f9; text-decoration: none; }
+    .topbar-nav a.active { background: rgba(56,189,248,0.12); color: #38bdf8; }
+    .topbar-right { display: flex; align-items: center; gap: 16px; font-size: 13px; color: #64748b; }
+
+    .container { max-width: 1000px; margin: 0 auto; padding: 32px 24px; }
+    h1 { font-size: 22px; font-weight: 600; margin-bottom: 8px; }
+    .subtitle { color: #64748b; font-size: 14px; margin-bottom: 24px; }
+
+    .info-box { padding: 16px 20px; border-radius: 12px; margin-bottom: 24px; background: rgba(59,130,246,0.08); border: 1px solid rgba(59,130,246,0.2); color: #93c5fd; font-size: 14px; line-height: 1.6; }
+
+    .alert { padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; font-size: 14px; }
+    .alert-success { background: rgba(34,197,94,0.12); border: 1px solid rgba(34,197,94,0.3); color: #86efac; }
+    .alert-danger { background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.3); color: #fca5a5; }
+    .alert-warning { background: rgba(245,158,11,0.12); border: 1px solid rgba(245,158,11,0.3); color: #fcd34d; }
+
+    /* 表格 */
+    table { width: 100%; border-collapse: collapse; background: #1e293b; border-radius: 12px; overflow: hidden; border: 1px solid rgba(255,255,255,0.06); }
+    thead th { background: #0f172a; padding: 12px 16px; text-align: left; font-size: 13px; color: #64748b; font-weight: 500; }
+    tbody tr { transition: background 0.1s; }
+    tbody tr:hover { background: rgba(255,255,255,0.02); }
+    td { padding: 10px 16px; font-size: 14px; border-top: 1px solid rgba(255,255,255,0.04); }
+    td.mono { font-family: "Menlo", "Consolas", monospace; color: #38bdf8; }
+
+    .badge { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+    .badge-b { background: rgba(59,130,246,0.15); color: #3b82f6; }
+    .badge-d { background: rgba(139,92,246,0.15); color: #8b5cf6; }
+
+    .btn-sm { padding: 5px 12px; font-size: 12px; border-radius: 6px; cursor: pointer; border: none; }
+    .btn-del { background: rgba(239,68,68,0.15); color: #fca5a5; }
+    .btn-del:hover { background: rgba(239,68,68,0.25); }
+    .btn-reset { background: rgba(245,158,11,0.12); color: #fcd34d; }
+    .btn-reset:hover { background: rgba(245,158,11,0.22); }
+    .btn-move { background: rgba(59,130,246,0.12); color: #93c5fd; }
+    .btn-move:hover { background: rgba(59,130,246,0.22); }
+
+    /* 添加表单 */
+    .add-form { background: #1e293b; border-radius: 12px; padding: 20px; margin-top: 20px; border: 1px solid rgba(255,255,255,0.06); }
+    .add-form h3 { font-size: 15px; margin-bottom: 16px; color: #f1f5f9; }
+    .form-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group label { font-size: 12px; color: #64748b; }
+    .form-group input, .form-group select { padding: 8px 12px; background: #0f172a; border: 1px solid #334155; border-radius: 8px; color: #f1f5f9; font-size: 14px; outline: none; }
+    .form-group input:focus, .form-group select:focus { border-color: #38bdf8; }
+    .form-group input::placeholder { color: #475569; }
+    .btn { padding: 8px 18px; border: none; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; }
+    .btn-add { background: #0284c7; color: #fff; }
+    .btn-add:hover { background: #0369a1; }
+
+    .table-info { padding: 12px 16px; font-size: 13px; color: #475569; border-top: 1px solid rgba(255,255,255,0.04); }
+    .back-link { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 16px; font-size: 14px; color: #64748b; }
+    .back-link:hover { color: #38bdf8; text-decoration: none; }
+
+    .tips { margin-top: 24px; background: #1e293b; border-radius: 12px; padding: 20px; border: 1px solid rgba(255,255,255,0.06); }
+    .tips h3 { font-size: 14px; margin-bottom: 12px; color: #94a3b8; }
+    .tips ul { list-style: none; font-size: 13px; color: #64748b; line-height: 2.2; }
+    .tips li strong { color: #94a3b8; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="topbar-brand">Squid <span>ACL</span> 管理</div>
+    <div class="topbar-nav">
+      <a href="{{ url_prefix }}/">📊 看板</a>
+      <a href="{{ url_prefix }}/proxy">⚙️ 配置管理</a>
+      <a href="{{ url_prefix }}/proxy/ips">🌐 IP 分组</a>
+      <a href="{{ url_prefix }}/proxy/allow">🌐 白名单</a>
+      <a href="{{ url_prefix }}/proxy/users" class="active">🔑 用户</a>
+      <a href="{{ url_prefix }}/proxy/conf">📄 squid.conf</a>
+    </div>
+    <div class="topbar-right">
+      <span>{{ current_user.id }}</span>
+      <a href="{{ url_prefix }}/logout">登出</a>
+    </div>
+  </div>
+
+  <div class="container">
+    <a href="{{ url_prefix }}/proxy" class="back-link">← 返回配置管理</a>
+    <h1>🔑 B/D 类用户账号管理</h1>
+    <p class="subtitle">B/D 类用户需输入账号密码才能通过 Squid 代理上网</p>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}
+        <div class="alert alert-{{ cat }}">{{ msg|safe }}</div>
+      {% endfor %}
+    {% endwith %}
+
+    <div class="info-box">
+      <strong>🔐 密码加密说明：</strong>密码以 <code>pbkdf2:sha256</code> 格式存储于本地数据库，
+      同时以 <code>htpasswd (APR1)</code> 格式写入服务器的 <code>/etc/squid/passwd</code> 文件。
+      Squid 读取 passwd 文件进行 HTTP Basic 认证。<br>
+      <strong>「重置密码」</strong>会生成新随机密码并自动更新 passwd 文件（无需手动操作）。
+    </div>
+
+    <!-- 用户列表 -->
+    <table>
+      <thead>
+        <tr>
+          <th style="width:60px">#</th>
+          <th>姓名</th>
+          <th>用户名</th>
+          <th>分组</th>
+          <th>移动分组</th>
+          <th style="width:260px">操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr>
+          <td style="color:#475569">{{ loop.index }}</td>
+          <td>
+            <form method="post" style="display:inline-flex;gap:6px;align-items:center;">
+              <input type="hidden" name="action" value="update_realname">
+              <input type="hidden" name="id" value="{{ row.id }}">
+              <input
+                type="text"
+                name="user_realname"
+                value="{{ row.user_realname or '' }}"
+                placeholder="未填写"
+                style="padding:4px 8px;background:#0f172a;border:1px solid #334155;border-radius:6px;color:#f1f5f9;font-size:13px;width:110px;outline:none;">
+              <button type="submit" title="保存姓名" style="background:none;border:none;cursor:pointer;font-size:13px;padding:2px 4px;">💾</button>
+            </form>
+          </td>
+          <td class="mono">{{ row.username }}</td>
+          <td><span class="badge badge-{{ row.user_group|lower }}">{{ row.user_group }} 类</span></td>
+          <td>
+            <form method="post" style="display:inline">
+              <input type="hidden" name="action" value="change_group">
+              <input type="hidden" name="id" value="{{ row.id }}">
+              <select name="new_group" onchange="if(this.value){this.form.submit();}" style="padding:4px 8px;background:#0f172a;border:1px solid #334155;border-radius:6px;color:#94a3b8;font-size:13px;outline:none;">
+                <option value="">移动到…</option>
+                {% for g in ['B','D'] if g != row.user_group %}
+                  <option value="{{ g }}">{{ g }} 类</option>
+                {% endfor %}
+              </select>
+            </form>
+          </td>
+          <td>
+            <form method="post" style="display:inline">
+              <input type="hidden" name="action" value="reset_password">
+              <input type="hidden" name="id" value="{{ row.id }}">
+              <button type="submit" class="btn-sm btn-reset" onclick="return confirm('确认重置 {{ row.username }} 的密码？将生成新随机密码。')">🔄 重置密码</button>
+            </form>
+            <form method="post" style="display:inline">
+              <input type="hidden" name="action" value="delete">
+              <input type="hidden" name="id" value="{{ row.id }}">
+              <button class="btn-sm btn-del" onclick="return confirm('确认删除用户 {{ row.username }}？')">🗑️ 删除</button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" style="text-align:center;color:#475569;padding:32px;">暂无用户，请添加</td></tr>
+        {% endfor %}
+      </tbody>
+      {% if rows %}
+      <tfoot><tr><td colspan="6" class="table-info">共 {{ rows|length }} 个账号</td></tr></tfoot>
+      {% endif %}
+    </table>
+
+    <!-- 添加用户 -->
+    <div class="add-form">
+      <h3>➕ 添加新用户</h3>
+      <form method="post" class="form-row">
+        <input type="hidden" name="action" value="add">
+        <div class="form-group">
+          <label>姓名</label>
+          <input type="text" name="user_realname" placeholder="例：张三">
+        </div>
+        <div class="form-group">
+          <label>用户名</label>
+          <input type="text" name="username" placeholder="例：20190101" required>
+        </div>
+        <div class="form-group">
+          <label>初始密码</label>
+          <input type="text" name="password" placeholder="请设置密码" required>
+        </div>
+        <div class="form-group">
+          <label>所属分组</label>
+          <select name="user_group">
+            <option value="B">B 类 — 教职工（全网站访问）</option>
+            <option value="D">D 类 — 受限员工（仅白名单）</option>
+          </select>
+        </div>
+        <button type="submit" class="btn btn-add">添加用户</button>
+      </form>
+    </div>
+
+    <!-- 提示 -->
+    <div class="tips">
+      <h3>💡 使用说明</h3>
+      <ul>
+        <li><strong>B 类用户：</strong>添加后，该用户使用账号密码即可访问所有网站（不受白名单限制）</li>
+        <li><strong>D 类用户：</strong>添加后，该用户使用账号密码，但只能访问白名单中的网站</li>
+        <li><strong>IP 关联：</strong>B/D 类账号需配合对应的 B/D 类 IP 使用。将用户电脑 IP 加入对应 IP 组后，用户打开浏览器访问外网时会弹出认证窗口</li>
+        <li><strong>浏览器认证：</strong>Chrome/Edge 等浏览器会缓存认证信息，切换账号需用隐私模式或清除缓存</li>
+        <li><strong>删除用户：</strong>删除后 passwd 文件会自动更新，用户立即无法认证</li>
+      </ul>
+    </div>
+  </div>
+</body>
+</html>

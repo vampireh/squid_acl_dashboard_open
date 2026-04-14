@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>squid.conf 编辑</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, "Microsoft YaHei", "PingFang SC", sans-serif; background: #0f172a; min-height: 100vh; color: #f1f5f9; }
+    a { color: #38bdf8; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .topbar { background: #1e293b; border-bottom: 1px solid rgba(255,255,255,0.06); padding: 0 24px; height: 56px; display: flex; align-items: center; gap: 24px; }
+    .topbar-brand { font-size: 16px; font-weight: 600; color: #f1f5f9; }
+    .topbar-brand span { color: #38bdf8; }
+    .topbar-nav { display: flex; gap: 4px; flex: 1; }
+    .topbar-nav a { padding: 6px 14px; border-radius: 8px; font-size: 14px; color: #94a3b8; transition: all 0.15s; }
+    .topbar-nav a:hover { background: rgba(255,255,255,0.06); color: #f1f5f9; text-decoration: none; }
+    .topbar-nav a.active { background: rgba(56,189,248,0.12); color: #38bdf8; }
+    .topbar-right { display: flex; align-items: center; gap: 16px; font-size: 13px; color: #64748b; }
+
+    .container { max-width: 1200px; margin: 0 auto; padding: 32px 24px; }
+    h1 { font-size: 22px; font-weight: 600; margin-bottom: 8px; }
+    .subtitle { color: #64748b; font-size: 14px; margin-bottom: 24px; }
+
+    .alert { padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; font-size: 14px; line-height: 1.6; }
+    .alert-success { background: rgba(34,197,94,0.12); border: 1px solid rgba(34,197,94,0.3); color: #86efac; }
+    .alert-danger { background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.3); color: #fca5a5; }
+    .alert-info { background: rgba(56,189,248,0.1); border: 1px solid rgba(56,189,248,0.25); color: #7dd3fc; }
+
+    /* 操作栏 */
+    .action-bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+    .btn { padding: 9px 20px; border: none; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.15s; }
+    .btn-save { background: #0284c7; color: #fff; }
+    .btn-save:hover { background: #0369a1; }
+    .btn-check { background: #1e293b; color: #f1f5f9; border: 1px solid #334155; }
+    .btn-check:hover { background: #334155; }
+    .btn-reload { background: #166534; color: #86efac; border: 1px solid rgba(34,197,94,0.3); }
+    .btn-reload:hover { background: #14532d; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* 编辑器 */
+    textarea { width: 100%; min-height: 600px; background: #0f172a; border: 1px solid #334155; border-radius: 12px; color: #e2e8f0; font-family: "Menlo", "Consolas", monospace; font-size: 13px; line-height: 1.7; padding: 16px; resize: vertical; outline: none; tab-size: 4; }
+    textarea:focus { border-color: #38bdf8; }
+    .editor-wrap { position: relative; }
+
+    /* 结果框 */
+    #result-box { display: none; margin-top: 16px; border-radius: 12px; padding: 16px; font-size: 13px; font-family: monospace; line-height: 1.6; white-space: pre-wrap; word-break: break-all; }
+    #result-box.show { display: block; }
+    #result-box.success { background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.3); color: #86efac; }
+    #result-box.error { background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.3); color: #fca5a5; }
+
+    /* 备份列表 */
+    .backups { margin-top: 32px; }
+    .backups h3 { font-size: 15px; margin-bottom: 12px; color: #f1f5f9; }
+    .backup-table { width: 100%; border-collapse: collapse; background: #1e293b; border-radius: 12px; overflow: hidden; border: 1px solid rgba(255,255,255,0.06); }
+    .backup-table th { background: #0f172a; padding: 10px 16px; text-align: left; font-size: 13px; color: #64748b; font-weight: 500; }
+    .backup-table td { padding: 10px 16px; font-size: 13px; border-top: 1px solid rgba(255,255,255,0.04); }
+    .btn-dl { padding: 4px 10px; background: rgba(56,189,248,0.1); border: 1px solid rgba(56,189,248,0.2); color: #38bdf8; border-radius: 6px; font-size: 12px; cursor: pointer; text-decoration: none; }
+    .btn-dl:hover { background: rgba(56,189,248,0.2); }
+
+    .back-link { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 16px; font-size: 14px; color: #64748b; }
+    .back-link:hover { color: #38bdf8; text-decoration: none; }
+
+    .info-box { padding: 16px 20px; border-radius: 12px; margin-bottom: 24px; background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.2); color: #fcd34d; font-size: 14px; line-height: 1.6; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="topbar-brand">Squid <span>ACL</span> 管理</div>
+    <div class="topbar-nav">
+      <a href="{{ url_prefix }}/">📊 看板</a>
+      <a href="{{ url_prefix }}/proxy">⚙️ 配置管理</a>
+      <a href="{{ url_prefix }}/proxy/ips">🌐 IP 分组</a>
+      <a href="{{ url_prefix }}/proxy/allow">🌐 白名单</a>
+      <a href="{{ url_prefix }}/proxy/users">🔑 用户</a>
+      <a href="{{ url_prefix }}/proxy/conf" class="active">📄 squid.conf</a>
+    </div>
+    <div class="topbar-right">
+      <span>{{ current_user.id }}</span>
+      <a href="{{ url_prefix }}/logout">登出</a>
+    </div>
+  </div>
+
+  <div class="container">
+    <a href="{{ url_prefix }}/proxy" class="back-link">← 返回配置管理</a>
+    <h1>📄 squid.conf 编辑</h1>
+    <p class="subtitle">直接编辑服务器上的 Squid 主配置文件</p>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}
+        <div class="alert alert-{{ cat }}">{{ msg }}</div>
+      {% endfor %}
+    {% endwith %}
+
+    <div class="info-box">
+      <strong>⚠️ 保存前请务必检查配置！</strong>错误的 squid.conf 会导致 Squid 服务无法启动。
+      建议先点「🧪 检查语法」，确认无误后再「💾 保存」。
+      保存会自动备份当前配置到 <code>squid_backups/</code> 目录。
+    </div>
+
+    <!-- 操作按钮 -->
+    <div class="action-bar">
+      <button class="btn btn-check" id="btn-check" onclick="runCheck()">🧪 检查语法</button>
+      <button class="btn btn-save" onclick="saveConfig()">💾 保存配置</button>
+      <button class="btn btn-reload" id="btn-reload" onclick="runReload()">🔄 重载 Squid</button>
+      <span style="font-size:13px;color:#475569;margin-left:8px;">
+        编辑后请先保存，再点「重载 Squid」使配置生效
+      </span>
+    </div>
+
+    <!-- 检查结果 -->
+    <div id="result-box"></div>
+
+    <!-- 编辑器 -->
+    <form method="post" id="conf-form">
+      <div class="editor-wrap">
+        <textarea name="content" id="editor" spellcheck="false">{{ content }}</textarea>
+      </div>
+    </form>
+
+    <!-- 备份列表 -->
+    {% if backups %}
+    <div class="backups">
+      <h3>📦 历史备份</h3>
+      <table class="backup-table">
+        <thead>
+          <tr>
+            <th>文件名</th>
+            <th>修改时间</th>
+            <th>大小</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for b in backups %}
+          <tr>
+            <td style="font-family:monospace;color:#38bdf8;font-size:12px;">{{ b.name }}</td>
+            <td style="color:#64748b;">{{ b.mtime }}</td>
+            <td style="color:#64748b;">{{ (b.size/1024)|round(1) }} KB</td>
+            <td><a href="{{ url_prefix }}/proxy/conf/backup/{{ b.name }}" class="btn-dl">⬇️ 下载</a></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+  </div>
+
+  <script>
+    function showResult(success, text) {
+      var box = document.getElementById('result-box');
+      box.className = 'show ' + (success ? 'success' : 'error');
+      box.textContent = (success ? '✅ 成功\n' : '❌ 失败\n') + text;
+      box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function runCheck() {
+      var btn = document.getElementById('btn-check');
+      btn.disabled = true;
+      btn.textContent = '⏳ 检查中…';
+      var box = document.getElementById('result-box');
+      box.className = 'show';
+      box.style.cssText = 'background:#1e293b;border:1px solid #334155;color:#94a3b8;';
+      box.textContent = '正在执行 squid -k parse …';
+      fetch('{{ url_prefix }}/proxy/conf/check', { method: 'POST' })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          btn.disabled = false;
+          btn.textContent = '🧪 检查语法';
+          showResult(data.success, data.output);
+        })
+        .catch(function(e) {
+          btn.disabled = false;
+          btn.textContent = '🧪 检查语法';
+          showResult(false, '请求失败：' + e);
+        });
+    }
+
+    function saveConfig() {
+      var form = document.getElementById('conf-form');
+      var btn = event.target;
+      var orig = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = '⏳ 保存中…';
+      var formData = new FormData(form);
+      fetch('{{ url_prefix }}/proxy/conf', { method: 'POST', body: formData })
+        .then(function(r) { return r.text(); })
+        .then(function() {
+          btn.disabled = false;
+          btn.textContent = orig;
+          showResult(true, '✅ 配置已保存，并自动创建了带时间戳的备份文件。');
+        })
+        .catch(function(e) {
+          btn.disabled = false;
+          btn.textContent = orig;
+          showResult(false, '保存失败：' + e);
+        });
+    }
+
+    function runReload() {
+      var btn = document.getElementById('btn-reload');
+      btn.disabled = true;
+      btn.textContent = '⏳ 重载中…';
+      var box = document.getElementById('result-box');
+      box.className = 'show';
+      box.style.cssText = 'background:#1e293b;border:1px solid #334155;color:#94a3b8;';
+      box.textContent = '正在执行 squid -k reconfigure …';
+      fetch('{{ url_prefix }}/proxy/conf/reload', { method: 'POST' })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          btn.disabled = false;
+          btn.textContent = '🔄 重载 Squid';
+          showResult(data.success, data.output);
+        })
+        .catch(function(e) {
+          btn.disabled = false;
+          btn.textContent = '🔄 重载 Squid';
+          showResult(false, '请求失败：' + e);
+        });
+    }
+
+    // Tab 键支持（插入 4 空格）
+    document.getElementById('editor').addEventListener('keydown', function(e) {
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        var start = this.selectionStart;
+        var end = this.selectionEnd;
+        this.value = this.value.substring(0, start) + '    ' + this.value.substring(end);
+        this.selectionStart = this.selectionEnd = start + 4;
+      }
+    });
+  </script>
+</body>
+</html>

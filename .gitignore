@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+*.pyo
+*.db
+*.log
+*.log.*
+logs/
+squid_backups/
+.env
+.idea/
+.vscode/
+*.swp
+node_modules/
