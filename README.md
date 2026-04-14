@@ -14,6 +14,7 @@
   - D 类：受限员工（密码 + 仅白名单）
 - **Web 配置管理**：通过浏览器管理 IP 分组、白名单、用户账号和 Squid 配置
 - **管理员认证**：支持密码修改、密码重置功能
+- **忘记密码**：支持通过邮件找回密码（需配置 SMTP）
 - **数据持久化**：SQLite 数据库存储，支持历史数据导入
 
 ---
@@ -184,6 +185,8 @@ sudo chmod 640 /etc/squid/passwd
 
 编辑 `app.py`，根据实际环境调整以下配置：
 
+**基础配置：**
+
 ```python
 # 应用目录
 BASE_DIR = "/opt/squid_acl_dashboard"
@@ -198,6 +201,52 @@ URL_PREFIX = "/squid-acl"
 常见日志路径：
 - CentOS/Rocky: `/var/log/squid/access.log`
 - Ubuntu: `/var/log/squid/access.log`
+
+**邮件配置（用于忘记密码功能）：**
+
+```python
+# ── 邮件找回密码配置 ──────────────────────────────────────────────────────────
+SMTP_HOST = os.environ.get("SMTP_HOST", "smtp.example.com")
+SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
+SMTP_USER = os.environ.get("SMTP_USER", "")
+SMTP_PASS = os.environ.get("SMTP_PASS", "")
+FROM_EMAIL = SMTP_USER          # 发件人（与 SMTP_USER 相同）
+ADMIN_EMAIL = "admin@example.com"  # 【重要】修改为管理员实际邮箱
+```
+
+**配置方式（推荐环境变量）：**
+
+```bash
+# 方式一：临时环境变量（当前会话有效）
+export SMTP_HOST="smtp.163.com"
+export SMTP_PORT="587"
+export SMTP_USER="your_email@163.com"
+export SMTP_PASS="your_email_password"
+export ADMIN_EMAIL="admin@yourdomain.com"
+
+# 方式二：Systemd 服务中配置（推荐）
+# 在 /etc/systemd/system/squid-acl-dashboard.service 的 [Service] 部分添加：
+# Environment="SMTP_HOST=smtp.163.com"
+# Environment="SMTP_USER=your_email@163.com"
+# Environment="SMTP_PASS=your_password"
+# Environment="ADMIN_EMAIL=admin@yourdomain.com"
+```
+
+**常见邮箱 SMTP 配置：**
+
+| 邮箱服务商 | SMTP 服务器 | 端口 | 说明 |
+|-----------|------------|------|------|
+| 163 邮箱 | smtp.163.com | 587 | 需开启 SMTP 服务，使用授权码 |
+| QQ 邮箱 | smtp.qq.com | 587 | 需开启 SMTP 服务，使用授权码 |
+| Gmail | smtp.gmail.com | 587 | 需开启两步验证，使用应用专用密码 |
+| Outlook | smtp.office365.com | 587 | 使用邮箱密码 |
+| 企业邮箱 | smtp.exmail.qq.com | 587 | 腾讯企业邮箱 |
+
+**获取邮箱授权码：**
+- **163 邮箱**：登录邮箱 → 设置 → POP3/SMTP/IMAP → 开启 SMTP 服务 → 获取授权码
+- **QQ 邮箱**：登录邮箱 → 设置 → 账户 → 开启 SMTP 服务 → 获取授权码
+
+**注意**：如果不配置 SMTP，忘记密码功能将无法发送邮件，但系统仍会生成新密码并在日志中记录（仅用于演示）。
 
 #### 6. 初始化数据库
 
@@ -258,6 +307,12 @@ User=root
 WorkingDirectory=/opt/squid_acl_dashboard
 Environment="PATH=/opt/squid_acl_dashboard/venv/bin"
 Environment="SECRET_KEY=your-secret-key-here-change-in-production"
+# 【邮件配置】根据实际邮箱修改以下配置
+Environment="SMTP_HOST=smtp.163.com"
+Environment="SMTP_PORT=587"
+Environment="SMTP_USER=your_email@163.com"
+Environment="SMTP_PASS=your_email_auth_code"
+Environment="ADMIN_EMAIL=admin@yourdomain.com"
 ExecStart=/opt/squid_acl_dashboard/venv/bin/gunicorn -w 4 -b 127.0.0.1:5001 app:app
 Restart=always
 RestartSec=5
