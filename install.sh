@@ -121,7 +121,6 @@ install_system_dependencies() {
         wget \
         net-tools \
         ufw \
-        systemctl \
         ca-certificates \
         squid-common
 
