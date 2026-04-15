@@ -363,7 +363,9 @@ EOF
 
     # 创建密码文件
     touch /etc/squid/passwd
-    chown root:squid /etc/squid/passwd
+    # 确保 squid 组存在
+    grep -q "^squid:" /etc/group || groupadd squid
+    chown root:squid /etc/squid/passwd 2>/dev/null || chown root:root /etc/squid/passwd
     chmod 640 /etc/squid/passwd
 
     # 设置 Squid 日志
