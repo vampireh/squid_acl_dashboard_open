@@ -1,4 +1,4 @@
-# Squid ACL Dashboard
+# Squid ACL Dashboard v1.0.1
 
 Squid 代理访问控制管理面板 - 一个用于管理 Squid 代理服务器 ACL 规则的 Web 界面。
 
@@ -17,7 +17,7 @@ Squid 代理访问控制管理面板 - 一个用于管理 Squid 代理服务器 
 
 ```bash
 # 下载安装脚本
-curl -fsSL https://raw.githubusercontent.com/vampireh/squid_acl_dashboard_open/main/install.sh -o install.sh
+curl -fsSL https://raw.githubusercontent.com/vampireh/squid_acl_dashboard_open/master/install.sh -o install.sh
 
 # 运行安装脚本
 sudo bash install.sh
