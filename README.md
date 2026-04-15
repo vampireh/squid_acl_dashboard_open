@@ -23,7 +23,7 @@ curl -fsSL https://raw.githubusercontent.com/vampireh/squid_acl_dashboard_open/m
 sudo bash install.sh
 ```
 
-安装完成后，访问 `http://<服务器IP>:5001` 即可使用。
+安装完成后，访问 `http://<服务器IP>/squid_acl` 即可使用。
 
 **安装后可用命令：**
 ```bash
@@ -33,6 +33,10 @@ sudo python3 /opt/squid_acl_dashboard/reset_password.py admin newpassword
 # 系统更新（从 GitHub 拉取最新代码）
 sudo /opt/squid_acl_dashboard/update.sh
 ```
+
+**默认 SMTP 配置**：
+- SMTP 服务器：`smtp.163.com`
+- SMTP 端口：`587`
 
 ### 手动安装
 

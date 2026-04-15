@@ -1,6 +1,7 @@
 #!/bin/bash
 # Squid ACL Dashboard 一键安装脚本 (Ubuntu)
 # 支持 Ubuntu 20.04/22.04/24.04
+# 默认访问地址: http://server_ip/squid_acl
 
 set -e
 
@@ -15,9 +16,14 @@ NC='\033[0m' # No Color
 INSTALL_DIR="/opt/squid_acl_dashboard"
 SERVICE_NAME="squid-acl-dashboard"
 SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
+NGINX_CONF_FILE="/etc/nginx/sites-available/squid-acl-dashboard"
+NGINX_ENABLED="/etc/nginx/sites-enabled/squid-acl-dashboard"
+URL_PREFIX="squid_acl"
 DEFAULT_ADMIN_USER="admin"
 DEFAULT_ADMIN_PASS="admin123"
 DEFAULT_SECRET_KEY=$(openssl rand -hex 32)
+DEFAULT_SMTP_HOST="smtp.163.com"
+DEFAULT_SMTP_PORT="587"
 
 # 日志函数
 log_info() {
@@ -55,7 +61,7 @@ detect_os() {
         log_error "无法检测操作系统版本"
         exit 1
     fi
-    
+
     if [[ "$OS" != *"Ubuntu"* ]]; then
         log_warning "此脚本专为 Ubuntu 设计，在其他系统上可能无法正常工作"
         read -p "是否继续? (y/N): " -n 1 -r
@@ -70,7 +76,7 @@ detect_os() {
 install_dependencies() {
     log_info "正在更新软件包列表..."
     apt-get update -qq
-    
+
     log_info "正在安装系统依赖..."
     apt-get install -y -qq \
         python3 \
@@ -85,37 +91,38 @@ install_dependencies() {
         git \
         openssl \
         net-tools \
-        ufw
-    
+        ufw \
+        nginx
+
     log_success "系统依赖安装完成"
 }
 
 # 配置 Squid
 configure_squid() {
     log_info "正在配置 Squid..."
-    
+
     # 创建 Squid 配置目录
     mkdir -p /etc/squid
-    
+
     # 备份原始配置
     if [[ -f /etc/squid/squid.conf ]]; then
         cp /etc/squid/squid.conf /etc/squid/squid.conf.backup.$(date +%Y%m%d%H%M%S)
         log_info "已备份原始 Squid 配置"
     fi
-    
+
     # 创建密码文件
     touch /etc/squid/passwd
     chown proxy:proxy /etc/squid/passwd
     chmod 640 /etc/squid/passwd
-    
+
     # 创建日志目录
     mkdir -p /var/log/squid
     chown proxy:proxy /var/log/squid
-    
+
     # 创建缓存目录
     mkdir -p /var/spool/squid
     chown proxy:proxy /var/spool/squid
-    
+
     # 生成 Squid 配置文件
     cat > /etc/squid/squid.conf << 'EOF'
 # Squid ACL Dashboard 生成的配置文件
@@ -165,40 +172,40 @@ maximum_object_size 1024 MB
 cache_mem 256 MB
 maximum_object_size_in_memory 512 KB
 EOF
-    
+
     # 初始化 Squid 缓存
     log_info "正在初始化 Squid 缓存..."
     squid -z 2>/dev/null || true
-    
+
     # 启动 Squid
     log_info "正在启动 Squid 服务..."
     systemctl restart squid || service squid restart || squid
     systemctl enable squid 2>/dev/null || true
-    
+
     log_success "Squid 配置完成"
 }
 
 # 从 GitHub 下载项目
 download_project() {
     log_info "正在从 GitHub 下载项目..."
-    
+
     local GITHUB_REPO="https://github.com/vampireh/squid_acl_dashboard_open.git"
     local TEMP_DIR=$(mktemp -d)
-    
+
     # 克隆仓库
     if git clone --depth 1 ${GITHUB_REPO} ${TEMP_DIR} 2>/dev/null; then
         log_success "项目下载完成"
-        
+
         # 复制文件到安装目录
         cp -r ${TEMP_DIR}/* ${INSTALL_DIR}/
-        
+
         # 清理临时目录
         rm -rf ${TEMP_DIR}
-        
+
         log_success "项目文件已复制到 ${INSTALL_DIR}"
     else
         log_warning "从 GitHub 下载失败，尝试使用本地文件..."
-        
+
         # 如果当前目录有项目文件，复制过去
         if [[ -f "app.py" ]]; then
             log_info "复制当前目录的项目文件..."
@@ -213,42 +220,42 @@ download_project() {
 # 创建应用目录
 setup_app_directory() {
     log_info "正在创建应用目录..."
-    
+
     # 创建目录
     mkdir -p ${INSTALL_DIR}
-    
+
     # 从 GitHub 下载或复制本地文件
     download_project
-    
+
     # 创建 templates 目录（如果不存在）
     mkdir -p ${INSTALL_DIR}/templates
-    
+
     # 设置权限
     chown -R root:root ${INSTALL_DIR}
     chmod -R 755 ${INSTALL_DIR}
-    
+
     # 设置脚本可执行权限
     chmod +x ${INSTALL_DIR}/reset_password.py 2>/dev/null || true
     chmod +x ${INSTALL_DIR}/update.sh 2>/dev/null || true
-    
+
     log_success "应用目录创建完成: ${INSTALL_DIR}"
 }
 
 # 创建 Python 虚拟环境
 setup_python_env() {
     log_info "正在创建 Python 虚拟环境..."
-    
+
     cd ${INSTALL_DIR}
-    
+
     # 创建虚拟环境
     python3 -m venv venv
-    
+
     # 激活虚拟环境并安装依赖
     source venv/bin/activate
-    
+
     # 升级 pip
     pip install --upgrade pip -q
-    
+
     # 创建 requirements.txt
     cat > requirements.txt << 'EOF'
 flask==3.0.0
@@ -256,36 +263,107 @@ flask-login==0.6.3
 werkzeug==3.0.1
 gunicorn==21.2.0
 EOF
-    
+
     # 安装依赖
     pip install -r requirements.txt -q
-    
+
     deactivate
-    
+
     log_success "Python 虚拟环境配置完成"
+}
+
+# 配置 Nginx 反向代理
+configure_nginx() {
+    log_info "正在配置 Nginx 反向代理..."
+
+    # 获取服务器 IP
+    SERVER_IP=$(hostname -I | awk '{print $1}')
+
+    # 创建 Nginx 配置文件
+    cat > ${NGINX_CONF_FILE} << EOF
+server {
+    listen 80;
+    server_name ${SERVER_IP};
+
+    # 访问日志
+    access_log /var/log/nginx/squid-acl-dashboard.access.log;
+    error_log /var/log/nginx/squid-acl-dashboard.error.log;
+
+    # 反向代理到 Gunicorn
+    location /${URL_PREFIX}/ {
+        proxy_pass http://127.0.0.1:5001/;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+
+        # WebSocket 支持（如果有）
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+
+        # 超时设置
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+
+    # 静态文件（如果需要）
+    location /${URL_PREFIX}/static/ {
+        proxy_pass http://127.0.0.1:5001/static/;
+        proxy_set_header Host \$host;
+        expires 7d;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # 首页重定向到 /squid_acl/
+    location = / {
+        return 301 /\${URL_PREFIX}/;
+    }
+}
+EOF
+
+    # 启用站点配置
+    ln -sf ${NGINX_CONF_FILE} ${NGINX_ENABLED}
+
+    # 禁用默认站点（如果存在）
+    rm -f /etc/nginx/sites-enabled/default
+
+    # 测试 Nginx 配置
+    if nginx -t 2>/dev/null; then
+        log_success "Nginx 配置语法正确"
+    else
+        log_error "Nginx 配置有误，请检查"
+        exit 1
+    fi
+
+    # 重载 Nginx
+    systemctl reload nginx
+
+    log_success "Nginx 反向代理配置完成"
 }
 
 # 创建 Systemd 服务
 create_systemd_service() {
     log_info "正在创建 Systemd 服务..."
-    
-    # 获取 SMTP 配置
-    read -p "请输入 SMTP 服务器地址 (默认: smtp.gmail.com): " SMTP_HOST
-    SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}
-    
-    read -p "请输入 SMTP 端口 (默认: 587): " SMTP_PORT
-    SMTP_PORT=${SMTP_PORT:-587}
-    
+
+    # 获取 SMTP 配置（使用 163 邮箱作为默认值）
+    read -p "请输入 SMTP 服务器地址 (默认: ${DEFAULT_SMTP_HOST}): " SMTP_HOST
+    SMTP_HOST=${SMTP_HOST:-${DEFAULT_SMTP_HOST}}
+
+    read -p "请输入 SMTP 端口 (默认: ${DEFAULT_SMTP_PORT}): " SMTP_PORT
+    SMTP_PORT=${SMTP_PORT:-${DEFAULT_SMTP_PORT}}
+
     read -p "请输入 SMTP 用户名: " SMTP_USER
     SMTP_USER=${SMTP_USER:-""}
-    
+
     read -s -p "请输入 SMTP 密码: " SMTP_PASS
     echo
     SMTP_PASS=${SMTP_PASS:-""}
-    
+
     read -p "请输入管理员邮箱 (用于接收密码重置邮件): " ADMIN_EMAIL
-    ADMIN_EMAIL=${ADMIN_EMAIL:-"admin@example.com"}
-    
+    ADMIN_EMAIL=${ADMIN_EMAIL:-"admin@163.com"}
+
     cat > ${SERVICE_FILE} << EOF
 [Unit]
 Description=Squid ACL Dashboard
@@ -302,30 +380,30 @@ Environment="SMTP_PORT=${SMTP_PORT}"
 Environment="SMTP_USER=${SMTP_USER}"
 Environment="SMTP_PASS=${SMTP_PASS}"
 Environment="ADMIN_EMAIL=${ADMIN_EMAIL}"
-ExecStart=${INSTALL_DIR}/venv/bin/gunicorn -w 4 -b 0.0.0.0:5001 app:app
+ExecStart=${INSTALL_DIR}/venv/bin/gunicorn -w 4 -b 127.0.0.1:5001 app:app
 Restart=always
 RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
 EOF
-    
+
     # 重载 systemd
     systemctl daemon-reload
-    
+
     # 启用服务
     systemctl enable ${SERVICE_NAME}
-    
+
     log_success "Systemd 服务创建完成"
 }
 
 # 初始化数据库
 init_database() {
     log_info "正在初始化数据库..."
-    
+
     cd ${INSTALL_DIR}
     source venv/bin/activate
-    
+
     # 运行数据库初始化
     python3 -c "
 import sys
@@ -334,49 +412,52 @@ from app import init_db
 init_db()
 print('数据库初始化完成')
 "
-    
+
     deactivate
-    
+
     log_success "数据库初始化完成"
 }
 
 # 配置防火墙
 configure_firewall() {
     log_info "正在配置防火墙..."
-    
+
     # 检查 ufw 是否启用
     if command -v ufw &> /dev/null; then
         UFW_STATUS=$(ufw status | grep -i "Status: active" || true)
-        
+
         if [[ -n "$UFW_STATUS" ]]; then
-            log_info "检测到 ufw 已启用，正在开放 5001 端口..."
-            ufw allow 5001/tcp
-            log_success "已开放 5001 端口"
+            log_info "检测到 ufw 已启用，正在开放 80 端口..."
+            ufw allow 80/tcp
+            ufw allow 3128/tcp
+            log_success "已开放 80 和 3128 端口"
         else
             log_warning "ufw 未启用，跳过防火墙配置"
-            log_info "如需启用防火墙，请运行: ufw allow 5001/tcp"
+            log_info "如需启用防火墙，请运行: ufw allow 80/tcp && ufw allow 3128/tcp"
         fi
     else
-        log_warning "未检测到 ufw，请手动配置防火墙开放 5001 端口"
+        log_warning "未检测到 ufw，请手动配置防火墙开放 80 端口"
     fi
-    
+
     # 提示云服务器安全组配置
     echo ""
     log_warning "【重要】如果您使用的是云服务器（阿里云、腾讯云、AWS等），"
-    log_warning "请在云服务器控制台的安全组/防火墙中开放 5001 端口！"
+    log_warning "请在云服务器控制台的安全组/防火墙中开放以下端口："
+    log_warning "  - 80 (HTTP): Web 管理面板"
+    log_warning "  - 3128 (Squid 代理): 如需外网访问代理"
     echo ""
 }
 
 # 启动服务
 start_services() {
     log_info "正在启动服务..."
-    
+
     # 启动 Dashboard 服务
     systemctl start ${SERVICE_NAME}
-    
+
     # 等待服务启动
     sleep 3
-    
+
     # 检查服务状态
     if systemctl is-active --quiet ${SERVICE_NAME}; then
         log_success "Dashboard 服务启动成功"
@@ -385,7 +466,7 @@ start_services() {
         systemctl status ${SERVICE_NAME} --no-pager
         exit 1
     fi
-    
+
     # 检查 Squid 状态
     if systemctl is-active --quiet squid 2>/dev/null || pgrep -x squid > /dev/null; then
         log_success "Squid 服务运行正常"
@@ -398,13 +479,13 @@ start_services() {
 # 显示安装信息
 show_install_info() {
     SERVER_IP=$(hostname -I | awk '{print $1}')
-    
+
     echo ""
     echo "========================================"
     echo -e "${GREEN}Squid ACL Dashboard 安装完成!${NC}"
     echo "========================================"
     echo ""
-    echo -e "访问地址: ${GREEN}http://${SERVER_IP}:5001${NC}"
+    echo -e "访问地址: ${GREEN}http://${SERVER_IP}/${URL_PREFIX}/${NC}"
     echo ""
     echo "默认管理员账号:"
     echo -e "  用户名: ${YELLOW}admin${NC}"
@@ -418,6 +499,7 @@ show_install_info() {
     echo "  重启 Dashboard: systemctl restart ${SERVICE_NAME}"
     echo "  查看日志: journalctl -u ${SERVICE_NAME} -f"
     echo "  查看 Squid 状态: systemctl status squid"
+    echo "  重载 Nginx: systemctl reload nginx"
     echo ""
     echo "命令行工具:"
     echo "  重置用户密码: python3 ${INSTALL_DIR}/reset_password.py <用户名> <新密码>"
@@ -428,14 +510,15 @@ show_install_info() {
     echo "配置文件位置:"
     echo "  应用目录: ${INSTALL_DIR}"
     echo "  Squid 配置: /etc/squid/squid.conf"
+    echo "  Nginx 配置: ${NGINX_CONF_FILE}"
     echo "  密码文件: /etc/squid/passwd"
     echo ""
     log_warning "【安全提示】"
     log_warning "1. 请及时修改默认管理员密码"
-    log_warning "2. 建议配置 Nginx 反向代理并启用 HTTPS"
+    log_warning "2. 建议配置 Nginx HTTPS 反向代理"
     log_warning "3. 如果无法访问，请检查防火墙和安全组设置"
     log_warning "   - 本地防火墙: ufw status"
-    log_warning "   - 云服务器安全组: 需在控制台开放 5001 端口"
+    log_warning "   - 云服务器安全组: 需在控制台开放 80 端口"
     echo ""
     echo "========================================"
 }
@@ -446,21 +529,22 @@ main() {
     echo "Squid ACL Dashboard 一键安装脚本"
     echo "========================================"
     echo ""
-    
+
     check_root
     detect_os
-    
+
     log_info "开始安装..."
-    
+
     install_dependencies
     configure_squid
     setup_app_directory
     setup_python_env
     create_systemd_service
+    configure_nginx
     init_database
     configure_firewall
     start_services
-    
+
     show_install_info
 }
 
