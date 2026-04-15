@@ -345,7 +345,7 @@ sudo systemctl restart squid-acl-dashboard
 | 邮箱服务商 | SMTP 服务器 | 端口 |
 |-----------|------------|------|
 | Gmail | smtp.gmail.com | 587 |
-| QQ邮箱 | smtp.qq.com | 587 |
+| 企业邮箱 | smtp.example.com | 587 |
 | 163邮箱 | smtp.163.com | 25/587 |
 | Outlook | smtp.office365.com | 587 |
 | 阿里云 | smtp.aliyun.com | 25/465 |
