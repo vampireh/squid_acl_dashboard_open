@@ -107,22 +107,17 @@ install_system_dependencies() {
 
     export DEBIAN_FRONTEND=noninteractive
 
-    apt-get update -qq
+    # 检查并安装缺失的依赖
+    local packages="python3 python3-pip python3-venv squid apache2-utils git curl wget net-tools ufw ca-certificates squid-common"
 
-    # 安装基础依赖
-    apt-get install -y \
-        python3 \
-        python3-pip \
-        python3-venv \
-        squid \
-        apache2-utils \
-        git \
-        curl \
-        wget \
-        net-tools \
-        ufw \
-        ca-certificates \
-        squid-common
+    for pkg in $packages; do
+        if ! dpkg -l | grep -q "^ii  $pkg "; then
+            log_info "安装 $pkg..."
+            apt-get install -y "$pkg" 2>/dev/null || true
+        else
+            log_info "$pkg 已安装，跳过"
+        fi
+    done
 
     log_success "系统依赖安装完成"
 }
