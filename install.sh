@@ -148,8 +148,8 @@ download_project() {
     local TEMP_DIR=$(mktemp -d)
 
     if git clone --depth 1 ${GITHUB_REPO} ${TEMP_DIR} 2>/dev/null; then
-        # 复制文件（排除 .git 和 runtime 文件）
-        rsync -av --exclude='.git' --exclude='logs' --exclude='*.db' --exclude='.env' ${TEMP_DIR}/ ${INSTALL_DIR}/ 2>/dev/null || \
+        # 复制文件（排除 .git、venv、logs 和 runtime 文件）
+        rsync -av --exclude='.git' --exclude='venv' --exclude='logs' --exclude='*.db' --exclude='.env' --exclude='squid_backups' ${TEMP_DIR}/ ${INSTALL_DIR}/ 2>/dev/null || \
         cp -r ${TEMP_DIR}/* ${INSTALL_DIR}/
 
         rm -rf ${TEMP_DIR}
