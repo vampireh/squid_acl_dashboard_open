@@ -166,19 +166,12 @@ download_project() {
 setup_python_env() {
     log_info "配置 Python 虚拟环境..."
 
-    cd ${INSTALL_DIR}
-
     # 创建虚拟环境
-    python3 -m venv venv
-    source venv/bin/activate
+    python3 -m venv ${INSTALL_DIR}/venv
 
-    # 升级 pip
-    pip install --upgrade pip -q
-
-    # 安装依赖
-    pip install -r requirements.txt -q
-
-    deactivate
+    # 升级 pip 并安装依赖
+    ${INSTALL_DIR}/venv/bin/pip install --upgrade pip -q
+    ${INSTALL_DIR}/venv/bin/pip install -r ${INSTALL_DIR}/requirements.txt -q
 
     log_success "Python 环境配置完成"
 }
@@ -193,8 +186,7 @@ init_database() {
 
     # 创建数据库文件
     if [[ ! -f "${INSTALL_DIR}/${DB_NAME}" ]]; then
-        source venv/bin/activate
-        python3 << 'PYEOF'
+        ${INSTALL_DIR}/venv/bin/python3 << 'PYEOF'
 import sqlite3
 import os
 
