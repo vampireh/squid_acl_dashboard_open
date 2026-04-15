@@ -1,24 +1,31 @@
 #!/bin/bash
-# Squid ACL Dashboard 更新脚本
+# Squid ACL Dashboard 更新脚本 v1.0.2
 # 用于从 GitHub 拉取最新代码并更新
 
 set -e
 
+# ============================================
+# 配置
+# ============================================
+INSTALL_DIR="/opt/squid_acl_dashboard"
+BACKUP_DIR="/opt/squid_acl_dashboard_backups"
+GITHUB_REPO="https://github.com/vampireh/squid_acl_dashboard_open.git"
+SERVICE_NAME="squid-acl-dashboard"
+URL_PREFIX="squid-acl"
+WEB_PORT=5001
+
+# ============================================
 # 颜色定义
+# ============================================
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-# 配置
-INSTALL_DIR="/opt/squid_acl_dashboard"
-BACKUP_DIR="/opt/squid_acl_dashboard_backups"
-GITHUB_REPO="https://github.com/vampireh/squid_acl_dashboard_open.git"
-SERVICE_NAME="squid-acl-dashboard"
-URL_PREFIX="squid-acl"
-
+# ============================================
 # 日志函数
+# ============================================
 log_info() {
     echo -e "${BLUE}[INFO]${NC} $1"
 }
@@ -35,7 +42,9 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
+# ============================================
 # 检查 root 权限
+# ============================================
 check_root() {
     if [[ $EUID -ne 0 ]]; then
         log_error "请使用 root 权限运行此脚本"
@@ -43,11 +52,13 @@ check_root() {
     fi
 }
 
+# ============================================
 # 显示帮助
+# ============================================
 show_help() {
     cat << 'EOF'
 ╔══════════════════════════════════════════════════════════════════╗
-║        Squid ACL Dashboard - 更新脚本                             ║
+║        Squid ACL Dashboard - 更新脚本                            ║
 ╚══════════════════════════════════════════════════════════════════╝
 
 用法:
@@ -72,16 +83,12 @@ show_help() {
 
     # 从备份恢复
     sudo ./update.sh --restore
-
-说明:
-    • 更新前会自动备份当前版本
-    • 更新失败可以自动回滚
-    • 数据库文件不会被覆盖
-    • 配置文件会保留用户修改
 EOF
 }
 
+# ============================================
 # 创建备份
+# ============================================
 create_backup() {
     log_info "正在创建备份..."
 
@@ -97,8 +104,8 @@ create_backup() {
     cp -r ${INSTALL_DIR}/* ${backup_path}/ 2>/dev/null || true
 
     # 备份数据库（单独备份）
-    if [[ -f ${INSTALL_DIR}/squid_acl.db ]]; then
-        cp ${INSTALL_DIR}/squid_acl.db ${backup_path}/squid_acl.db.backup
+    if [[ -f ${INSTALL_DIR}/acl_dashboard.db ]]; then
+        cp ${INSTALL_DIR}/acl_dashboard.db ${backup_path}/acl_dashboard.db.backup
         log_info "数据库已备份"
     fi
 
@@ -117,7 +124,9 @@ create_backup() {
     echo ${backup_path}
 }
 
+# ============================================
 # 恢复备份
+# ============================================
 restore_backup() {
     log_info "正在恢复备份..."
 
@@ -153,8 +162,8 @@ restore_backup() {
     cp -r ${backup_path}/* ${INSTALL_DIR}/
 
     # 恢复数据库
-    if [[ -f ${backup_path}/squid_acl.db.backup ]]; then
-        cp ${backup_path}/squid_acl.db.backup ${INSTALL_DIR}/squid_acl.db
+    if [[ -f ${backup_path}/acl_dashboard.db.backup ]]; then
+        cp ${backup_path}/acl_dashboard.db.backup ${INSTALL_DIR}/acl_dashboard.db
         log_info "数据库已恢复"
     fi
 
@@ -170,7 +179,9 @@ restore_backup() {
     log_success "恢复完成"
 }
 
+# ============================================
 # 检查服务状态
+# ============================================
 check_service() {
     log_info "检查服务状态..."
 
@@ -184,7 +195,9 @@ check_service() {
     fi
 }
 
+# ============================================
 # 创建 Squid 命令软链接
+# ============================================
 create_squid_symlink() {
     log_info "检查 Squid 命令软链接..."
 
@@ -204,7 +217,9 @@ create_squid_symlink() {
     fi
 }
 
+# ============================================
 # 执行更新
+# ============================================
 perform_update() {
     local force=$1
     local branch=${2:-master}
@@ -278,6 +293,7 @@ perform_update() {
     chmod -R 755 ${INSTALL_DIR}
     chmod +x ${INSTALL_DIR}/reset_password.py 2>/dev/null || true
     chmod +x ${INSTALL_DIR}/update.sh 2>/dev/null || true
+    chmod +x ${INSTALL_DIR}/uninstall.sh 2>/dev/null || true
 
     # 重建 Squid 命令软链接
     create_squid_symlink
@@ -297,7 +313,7 @@ perform_update() {
         local server_ip=$(hostname -I | awk '{print $1}')
         echo ""
         echo "========================================"
-        echo -e "访问地址: ${GREEN}http://${server_ip}:5001/${URL_PREFIX}/${NC}"
+        echo -e "访问地址: ${GREEN}http://${server_ip}:${WEB_PORT}/${URL_PREFIX}/${NC}"
         echo "========================================"
 
         # 清理旧备份
@@ -318,7 +334,9 @@ perform_update() {
     fi
 }
 
+# ============================================
 # 显示版本信息
+# ============================================
 show_version() {
     log_info "当前版本信息:"
 
@@ -333,10 +351,12 @@ show_version() {
 
     echo "  安装目录: ${INSTALL_DIR}"
     echo "  服务状态: $(systemctl is-active ${SERVICE_NAME} 2>/dev/null || echo 'unknown')"
-    echo "  访问地址: http://$(hostname -I | awk '{print $1}'):5001/${URL_PREFIX}/"
+    echo "  访问地址: http://$(hostname -I | awk '{print $1}'):${WEB_PORT}/${URL_PREFIX}/"
 }
 
+# ============================================
 # 主函数
+# ============================================
 main() {
     local force="false"
     local branch="master"

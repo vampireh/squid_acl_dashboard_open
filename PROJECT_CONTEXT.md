@@ -1,13 +1,13 @@
-# squid_acl_dashboard - AI 项目理解文档
+# squid_acl_dashboard_open - AI 项目理解文档
 
 > **用途**：本文档供 AI 阅读，使其快速理解项目架构、功能和数据模型，替代直接阅读全部源码。
-> **最新版本**：2026-04-14，Flask 2.0.3 + SQLite + Squid 代理日志分析 + 访问控制系统。
+> **最新版本**：2026-04-15，Flask 2.0.3 + SQLite + Squid 代理日志分析 + 访问控制系统，v1.0.2。
 
 ---
 
 ## 一、项目是什么
 
-**squid_acl_dashboard** 是一个基于 Flask 的 **Squid 代理访问控制管理平台**，同时也是一套**代理日志可视化分析系统**。
+**squid_acl_dashboard_open** 是一个基于 Flask 的 **Squid 代理访问控制管理平台**，同时也是一套**代理日志可视化分析系统**。
 
 **两个核心功能**：
 
@@ -28,6 +28,7 @@
 | 前端 | Jinja2 模板 + 原生 HTML/CSS/JS（无框架） |
 | 部署方式 | systemd 服务 `squid-acl-dashboard` |
 | URL 前缀 | `/squid-acl`（由 `URL_PREFIX` 常量控制） |
+| 安装方式 | 一键安装脚本 `install.sh` |
 
 ---
 
@@ -74,7 +75,7 @@
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | id | INTEGER | 主键 |
-| event_time | TEXT | 北京时间可读时间（如 `2026-04-14 16:30:00`） |
+| event_time | TEXT | 北京时间可读时间（如 `2026-04-15 16:30:00`） |
 | event_ts | REAL | Unix 时间戳（北京时间） |
 | client_ip | TEXT | 客户端 IP |
 | status | TEXT | Squid 状态码（如 `TCP_MISS/200`） |
@@ -167,48 +168,38 @@ Squid 通过 IP 分组实现差异化代理访问权限，分组逻辑在 squid.
 | `/etc/squid/passwd` | HTPasswd 用户文件 |
 | `/etc/squid/allow.txt` | 白名单域名列表 |
 | `/var/log/squid/access.log` | Squid 访问日志（应用读取的来源） |
-| `/var/log/git-deploy.log` | 自动化部署日志 |
 
 ---
 
-## 七、自动化特性
+## 七、一键安装脚本特性
 
-### 1. Git 自动化部署
-- 本地代码目录 `git push` → 服务器裸仓库 `post-receive` hook → 自动 checkout 代码 + 保护数据库/日志 + 重启服务
-- 钩子路径：`/opt/git/squid_acl_dashboard.git/hooks/post-receive`
+### install.sh
+- 自动检测 Ubuntu 版本
+- 自动安装系统依赖（Python3, pip, Squid, Apache2-utils 等）
+- 自动配置防火墙（ufw + 云服务器安全组提示）
+- 自动初始化数据库
+- 自动配置 Squid 代理
+- 自动配置 systemd 服务
+- 默认 SMTP: smtp.163.com:587
+- 默认访问地址: http://ip:5001/squid-acl/
 
-### 2. 后台数据清理
-- 每天北京时间凌晨 3 点（`CLEANUP_HOUR=3`）自动清理超期日志
-- 默认保留 30 天（`KEEP_DAYS=30`）
-- 清理后执行 `VACUUM` 压缩数据库
+### uninstall.sh
+- 支持 `--keep-squid` 保留 Squid 配置
+- 支持 `--keep-db` 保留数据库备份
+- 支持 `--keep-logs` 保留日志文件
+- 自动创建卸载前备份
 
-### 3. 日志实时 tail
-- 看板首页实时 tail Squid access.log（后台线程，5秒间隔）
-- 推送日志到前端 JS（WebSocket 或轮询）
-
-### 4. 文件 ↔ 数据库同步
-- `sync_ips_from_file()`：从 `ip_group_*.txt` 文件导入 IP 到 proxy_ips 表
-- `sync_ips_to_file()`：从 proxy_ips 表导出 IP 到文件
-- `sync_users_from_passwd()`：从 `/etc/squid/passwd` 导入账号
-- 用户变更后同步写回 `passwd` 文件（HTPasswd 格式）
-
-### 5. 邮件重置密码
-- 生成随机 16 位密码
-- 通过 SMTP 发送重置邮件
-- 令牌 1 小时有效期
-
----
-
-## 八、URL 前缀与子路径
-
-- **URL 前缀**：`/squid-acl`（由常量 `URL_PREFIX` 控制）
-- **静态文件**：通过 Nginx 代理时，需要同时代理 `/squid-acl/static/`
-- **数据库**：`/opt/squid_acl_dashboard/acl_dashboard.db`
-- **日志文件**：`/var/log/squid/access.log`
+### update.sh
+- 支持 `--force` 强制更新
+- 支持 `--backup` 仅备份
+- 支持 `--restore` 从备份恢复
+- 支持 `--version` 查看版本信息
+- 自动备份当前版本
+- 更新失败自动回滚
 
 ---
 
-## 九、关键配置常量（app.py 头部）
+## 八、关键配置常量（app.py 头部）
 
 ```python
 BASE_DIR      = "/opt/squid_acl_dashboard"   # 应用根目录
@@ -226,40 +217,38 @@ CST           = timezone(timedelta(hours=8))  # 北京时区
 
 ---
 
+## 九、.gitignore 配置
+
+以下文件/目录不提交到 Git：
+
+```
+# 运行时数据
+logs/
+oncetask/
+*.db
+*.db.backup
+
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# 备份
+*.bak
+squid_backups/
+```
+
+---
+
 ## 十、已知的架构注意点
 
 1. **Python 版本兼容**：代码中 `subprocess.run()` 不可使用 `capture_output=True`（Python 3.6 不支持），需使用 `stdout=subprocess.PIPE, stderr=subprocess.PIPE` 替代。
 2. **北京时间强制**：无论服务器系统时区如何，应用层强制使用 UTC+8（`CST`）。
-3. **数据库保护**：服务器上的 `acl_dashboard.db` 和 `logs/` 目录在 git push 时由 post-receive hook 备份/恢复，不被覆盖。
+3. **数据库保护**：`acl_dashboard.db` 和 `logs/` 目录通过 .gitignore 保护，不被提交到 Git。
 4. **Squid 服务名**：`systemctl restart squid-acl-dashboard`（不是 squid）。
 5. **HTPasswd 格式**：passwd 文件使用 Apache `htpasswd -b` 格式，`username:password_hash`。
 
 ---
 
-## 十一、快速代码修改指南
-
-### 修改 URL 前缀
-修改 `app.py` 第 23 行：
-```python
-URL_PREFIX = "/squid-acl"  # 改为新前缀
-```
-同时需更新 Nginx 反向代理配置。
-
-### 增加 IP 分组（如增加 E 类）
-1. 在 `app.py` 的 `IP_FILES` 字典中增加一项
-2. 在 `IP_GROUP_DESC` 中增加描述
-3. 修改 squid.conf 增加对应 ACL 规则
-4. 在前端模板（如 `proxy_ips.html`）中增加分组选项卡
-
-### 修改日志保留天数
-修改 `app.py` 中 `KEEP_DAYS` 常量（默认 30 天）：
-```python
-KEEP_DAYS = 60  # 改为 60 天
-```
-
-### 增加新的日志分类
-在 `classify_status()` 函数中添加新的 status → category 映射。
-
----
-
-*文档由 AI 自动生成，基于 `app.py` 源码分析。最后更新：2026-04-14。*
+*文档由 AI 自动生成，基于 `app.py` 源码分析。最后更新：2026-04-15。*

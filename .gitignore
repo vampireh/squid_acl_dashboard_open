@@ -1,13 +1,37 @@
+# 运行时数据（不提交到 Git）
+logs/
+oncetask/
+*.db
+*.db.backup
+
+# Python
 __pycache__/
 *.pyc
 *.pyo
-*.db
+venv/
+.venv/
+
+# 操作系统
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 日志
 *.log
 *.log.*
-logs/
+
+# 备份
+*.bak
+*.backup
+
+# Squid 配置备份
 squid_backups/
+
+# 本地配置文件
 .env
-.idea/
-.vscode/
-*.swp
-node_modules/
+.env.local
