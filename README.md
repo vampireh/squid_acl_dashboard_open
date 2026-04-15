@@ -38,6 +38,22 @@ sudo /opt/squid_acl_dashboard/update.sh
 - SMTP 服务器：`smtp.163.com`
 - SMTP 端口：`587`
 
+### 卸载
+
+```bash
+# 下载卸载脚本
+curl -fsSL https://raw.githubusercontent.com/vampireh/squid_acl_dashboard_open/master/uninstall.sh -o uninstall.sh
+
+# 运行卸载脚本
+sudo bash uninstall.sh
+
+# 保留 Squid 配置卸载（不清除 Squid）
+sudo bash uninstall.sh --keep-squid
+
+# 保留数据库卸载（不清除数据库）
+sudo bash uninstall.sh --keep-db
+```
+
 ### 手动安装
 
 #### 系统要求
