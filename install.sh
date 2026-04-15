@@ -370,7 +370,8 @@ EOF
 
     # 设置 Squid 日志
     touch /var/log/squid/access.log
-    chown proxy:proxy /var/log/squid/access.log
+    local proxy_group=$(id -gn proxy 2>/dev/null || echo "root")
+    chown proxy:$proxy_group /var/log/squid/access.log 2>/dev/null || true
 
     log_success "Squid 配置完成"
 }
