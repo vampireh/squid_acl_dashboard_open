@@ -133,8 +133,11 @@ setup_app_directory() {
     mkdir -p ${INSTALL_DIR}/templates
     mkdir -p ${INSTALL_DIR}/squid_backups
 
-    chown -R root:root ${INSTALL_DIR}
-    chmod -R 755 ${INSTALL_DIR}
+    # 设置目录权限（安装目录本身755，配置文件根据需要设置）
+    chmod 755 ${INSTALL_DIR}
+    chmod 755 ${INSTALL_DIR}/logs
+    chmod 755 ${INSTALL_DIR}/templates
+    chmod 755 ${INSTALL_DIR}/squid_backups
 
     log_success "应用目录创建完成: ${INSTALL_DIR}"
 }
@@ -151,6 +154,12 @@ download_project() {
         # 复制文件（排除 .git、venv、logs 和 runtime 文件）
         rsync -av --exclude='.git' --exclude='venv' --exclude='logs' --exclude='*.db' --exclude='.env' --exclude='squid_backups' ${TEMP_DIR}/ ${INSTALL_DIR}/ 2>/dev/null || \
         cp -r ${TEMP_DIR}/* ${INSTALL_DIR}/
+
+        # 确保目录权限正确
+        chmod 755 ${INSTALL_DIR}
+        find ${INSTALL_DIR} -type d -exec chmod 755 {} \; 2>/dev/null || true
+
+        rm -rf ${TEMP_DIR}
 
         rm -rf ${TEMP_DIR}
         log_success "项目文件下载完成"
