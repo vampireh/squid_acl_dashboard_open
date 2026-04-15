@@ -265,9 +265,13 @@ perform_update() {
 
     # 更新 Python 依赖
     log_info "更新 Python 依赖..."
-    source ${INSTALL_DIR}/venv/bin/activate
-    pip install -r ${INSTALL_DIR}/requirements.txt -q
-    deactivate
+    if [[ -f "${INSTALL_DIR}/venv/bin/activate" ]]; then
+        source ${INSTALL_DIR}/venv/bin/activate
+        pip install -r ${INSTALL_DIR}/requirements.txt -q
+        deactivate
+    else
+        log_warning "虚拟环境不存在，跳过依赖更新"
+    fi
 
     # 设置权限
     chown -R root:root ${INSTALL_DIR}
