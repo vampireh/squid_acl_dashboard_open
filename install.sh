@@ -267,7 +267,6 @@ conn.close()
 
 print(f"数据库创建成功: {db_path}")
 PYEOF
-        deactivate
     fi
 
     chown root:root ${INSTALL_DIR}/${DB_NAME}
