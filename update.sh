@@ -16,8 +16,7 @@ INSTALL_DIR="/opt/squid_acl_dashboard"
 BACKUP_DIR="/opt/squid_acl_dashboard_backups"
 GITHUB_REPO="https://github.com/vampireh/squid_acl_dashboard_open.git"
 SERVICE_NAME="squid-acl-dashboard"
-NGINX_CONF_FILE="/etc/nginx/sites-available/squid-acl-dashboard"
-URL_PREFIX="squid_acl"
+URL_PREFIX="squid-acl"
 
 # 日志函数
 log_info() {
@@ -109,12 +108,6 @@ create_backup() {
         log_info "服务配置已备份"
     fi
 
-    # 备份 Nginx 配置
-    if [[ -f ${NGINX_CONF_FILE} ]]; then
-        cp ${NGINX_CONF_FILE} ${backup_path}/
-        log_info "Nginx 配置已备份"
-    fi
-
     echo ${backup_path} > ${BACKUP_DIR}/latest_backup.txt
     log_success "备份完成: ${backup_path}"
 
@@ -155,7 +148,6 @@ restore_backup() {
 
     # 停止服务
     systemctl stop ${SERVICE_NAME} 2>/dev/null || true
-    systemctl reload nginx 2>/dev/null || true
 
     # 恢复文件
     cp -r ${backup_path}/* ${INSTALL_DIR}/
@@ -170,12 +162,6 @@ restore_backup() {
     if [[ -f ${backup_path}/${SERVICE_NAME}.service ]]; then
         cp ${backup_path}/${SERVICE_NAME}.service /etc/systemd/system/
         systemctl daemon-reload
-    fi
-
-    # 恢复 Nginx 配置
-    if [[ -f ${backup_path}/squid-acl-dashboard ]]; then
-        cp ${backup_path}/squid-acl-dashboard ${NGINX_CONF_FILE}
-        systemctl reload nginx
     fi
 
     # 重启服务
@@ -195,6 +181,26 @@ check_service() {
         log_error "服务未运行"
         systemctl status ${SERVICE_NAME} --no-pager
         return 1
+    fi
+}
+
+# 创建 Squid 命令软链接
+create_squid_symlink() {
+    log_info "检查 Squid 命令软链接..."
+
+    # 查找 squid 命令位置
+    SQUID_PATH=""
+    for path in /usr/sbin/squid /usr/bin/squid /usr/local/sbin/squid /usr/local/bin/squid; do
+        if [[ -f "$path" ]]; then
+            SQUID_PATH="$path"
+            break
+        fi
+    done
+
+    if [[ -n "$SQUID_PATH" ]]; then
+        # 创建软链接到 /usr/local/bin
+        ln -sf "$SQUID_PATH" /usr/local/bin/squid 2>/dev/null || true
+        log_success "Squid 命令软链接已创建: /usr/local/bin/squid"
     fi
 }
 
@@ -269,9 +275,8 @@ perform_update() {
     chmod +x ${INSTALL_DIR}/reset_password.py 2>/dev/null || true
     chmod +x ${INSTALL_DIR}/update.sh 2>/dev/null || true
 
-    # 重载 Nginx（确保配置生效）
-    log_info "重载 Nginx..."
-    systemctl reload nginx 2>/dev/null || true
+    # 重建 Squid 命令软链接
+    create_squid_symlink
 
     # 启动服务
     log_info "启动服务..."
@@ -288,7 +293,7 @@ perform_update() {
         local server_ip=$(hostname -I | awk '{print $1}')
         echo ""
         echo "========================================"
-        echo -e "访问地址: ${GREEN}http://${server_ip}/${URL_PREFIX}/${NC}"
+        echo -e "访问地址: ${GREEN}http://${server_ip}:5001/${URL_PREFIX}/${NC}"
         echo "========================================"
 
         # 清理旧备份
@@ -324,7 +329,7 @@ show_version() {
 
     echo "  安装目录: ${INSTALL_DIR}"
     echo "  服务状态: $(systemctl is-active ${SERVICE_NAME} 2>/dev/null || echo 'unknown')"
-    echo "  访问地址: http://$(hostname -I | awk '{print $1}')/${URL_PREFIX}/"
+    echo "  访问地址: http://$(hostname -I | awk '{print $1}'):5001/${URL_PREFIX}/"
 }
 
 # 主函数

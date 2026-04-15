@@ -23,7 +23,7 @@ curl -fsSL https://raw.githubusercontent.com/vampireh/squid_acl_dashboard_open/m
 sudo bash install.sh
 ```
 
-安装完成后，访问 `http://<服务器IP>/squid_acl` 即可使用。
+安装完成后，访问 `http://<服务器IP>:5001/squid-acl` 即可使用。
 
 **安装后可用命令：**
 ```bash
